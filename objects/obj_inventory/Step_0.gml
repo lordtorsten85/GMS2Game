@@ -70,7 +70,7 @@ if (is_open) {
                 }
             }
         }
-
+		// NEW COMMENT
         // If no valid drop spot, snap back to original position
         if (!dropped) {
             show_debug_message("Drop failed for " + item_name + ", snapping back to [" + string(original_mx) + "," + string(original_my) + "] in " + inventory_type);
