@@ -62,23 +62,37 @@ function inventory_add_at(x, y, item_id, qty, grid) {
         }
     }
 }
-// Removes an item from the specified grid position, clearing all occupied cells.
+// scr_inventory_functions - inventory_remove
+// Removes an item from the specified grid position, clearing all occupied cells for multicell items
 
 function inventory_remove(mx, my, grid) {
-    if (!ds_exists(grid, ds_type_grid)) return;
+    if (!ds_exists(grid, ds_type_grid)) {
+        show_debug_message("Error: Attempted to remove item from invalid grid");
+        return;
+    }
     var slot = grid[# mx, my];
     if (slot != -1 && is_array(slot)) {
         var item_id = slot[0];
+        var placement_id = slot[1];
+        var item_name = global.item_data[item_id][0];
         var width = global.item_data[item_id][1];
         var height = global.item_data[item_id][2];
+
+        show_debug_message("Removing " + item_name + " (ID: " + string(item_id) + ", Placement ID: " + string(placement_id) + ") from [" + string(mx) + "," + string(my) + "] - Size: " + string(width) + "x" + string(height));
+
+        // Clear all cells occupied by this item
         for (var i = mx; i < mx + width; i++) {
             for (var j = my; j < my + height; j++) {
-                grid[# i, j] = -1;
+                if (i < ds_grid_width(grid) && j < ds_grid_height(grid)) {
+                    grid[# i, j] = -1;
+                }
             }
         }
+        show_debug_message("Cleared " + item_name + " from grid at [" + string(mx) + "," + string(my) + "] to [" + string(mx + width - 1) + "," + string(my + height - 1) + "]");
+    } else {
+        show_debug_message("No valid item to remove at [" + string(mx) + "," + string(my) + "]");
     }
 }
-
 // Expands the inventory grid of the specified instance to new dimensions, preserving existing items.
 
 function inventory_expand(inv_instance, new_width, new_height) {
