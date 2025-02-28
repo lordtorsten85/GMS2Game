@@ -34,7 +34,7 @@ if (sprite_index != -1) {
             draw_set_color(c_white);
             draw_text_transformed(prompt_x, prompt_y, text, scale, scale, 0); // Main text
 
-            show_debug_message("Displayed scaled prompt '" + text + "' above " + inventory_type + " at world [" + string(prompt_x) + "," + string(prompt_y) + "] (scale: " + string(scale) + ")");
+            //show_debug_message("Displayed scaled prompt '" + text + "' above " + inventory_type + " at world [" + string(prompt_x) + "," + string(prompt_y) + "] (scale: " + string(scale) + ")");
         }
     }
 } else {

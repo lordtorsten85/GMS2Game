@@ -119,7 +119,7 @@ if (is_open) {
                     draw_rectangle(slot_x, slot_y, slot_x + slot_size - 1, slot_y + slot_size - 1, false);
                 }
             }
-          //  show_debug_message("Dragging over " + inventory_type + " - Drop position [" + string(drop_x) + "," + string(drop_y) + "] is " + (can_drop ? "valid (green)" : "invalid (red)"));
+            show_debug_message("Dragging over " + inventory_type + " - Drop position [" + string(drop_x) + "," + string(drop_y) + "] is " + (can_drop ? "valid (green)" : "invalid (red)"));
         }
     }
 
