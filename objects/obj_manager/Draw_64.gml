@@ -1,7 +1,10 @@
-// obj_manager - Draw GUI Event
+// obj_manager
+// Event: Draw GUI
+// Description: Central hub for drawing dragged items across all inventories, ensuring consistent rendering between multiple inventory instances.
+
 if (global.dragging_inventory != -1 && instance_exists(global.dragging_inventory)) {
     var inv = global.dragging_inventory;
-    if (inv.dragging != -1 && is_array(inv.dragging)) {
+    if (inv.dragging != -1 && is_array(inv.dragging)) { // Safety check
         var item_id = inv.dragging[0];
         if (item_id >= 0 && item_id < array_length(global.item_data)) {
             var item_width = global.item_data[item_id][1];
@@ -17,6 +20,7 @@ if (global.dragging_inventory != -1 && instance_exists(global.dragging_inventory
                 var draw_x = gui_mouse_x + inv.drag_offset_x;
                 var draw_y = gui_mouse_y + inv.drag_offset_y;
                 draw_sprite_ext(sprite, 0, draw_x, draw_y, scale_x, scale_y, 0, c_white, 1);
+                //show_debug_message("Drawing dragged " + global.item_data[item_id][0] + " at [" + string(draw_x) + "," + string(draw_y) + "]");
             }
         }
     }
