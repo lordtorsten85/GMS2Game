@@ -1,6 +1,6 @@
 // obj_inventory
 // Event: Step
-// Description: Handles drag-and-drop with ground drop outside inventories and snap-back on invalid drops. Updated to drop stacked items on the ground with their full quantity, ensuring item_id and stack_quantity are valid and logged for debugging.
+// Description: Handles drag-and-drop with ground drop outside inventories, snap-back on invalid drops, and spawns obj_context_menu on right-click for generic items. Disables drag-and-drop while obj_context_menu is open. Updated to drop stacked items on the ground with their full quantity, ensuring item_id and stack_quantity are valid.
 // Variable Definitions:
 // - inventory_type: string (e.g., "backpack")
 // - grid_width: real (Number of slots wide)
@@ -16,15 +16,16 @@
 // - original_grid: real (Reference to original grid)
 // - is_open: boolean (Whether the inventory UI is visible)
 // - inventory: asset (ds_grid for inventory slots)
+// - stack_quantity: real (The number of items in the stack, used for ground drops, not stored in instance but passed to obj_item)
 
 if (is_open) {
     var gui_mouse_x = device_mouse_x_to_gui(0);
     var gui_mouse_y = device_mouse_y_to_gui(0);
 
-    // Start dragging
+    // Start dragging (disabled while context menu is open)
     var bounds_width = (object_index == obj_equipment_slots ? grid_width * slot_size + (grid_width - 1) * spacing : grid_width * slot_size);
     if (point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + grid_height * slot_size)) {
-        if (mouse_check_button_pressed(mb_left) && dragging == -1) {
+        if (mouse_check_button_pressed(mb_left) && dragging == -1 && !instance_exists(obj_context_menu)) { // Disable drag if context menu is open
             show_debug_message("Mouse clicked over inventory type: " + inventory_type + " at GUI [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "]");
             if (instance_exists(id) && ds_exists(inventory, ds_type_grid)) {
                 var slot_x = floor((gui_mouse_x - inv_gui_x) / (object_index == obj_equipment_slots ? slot_size + spacing : slot_size));
@@ -70,8 +71,32 @@ if (is_open) {
         }
     }
 
+    // Spawn context menu on right-click
+    if (mouse_check_button_pressed(mb_right) && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + grid_height * slot_size)) {
+        var slot_x = floor((gui_mouse_x - inv_gui_x) / (object_index == obj_equipment_slots ? slot_size + spacing : slot_size));
+        var slot_y = floor((gui_mouse_y - inv_gui_y) / slot_size);
+        slot_x = clamp(slot_x, 0, grid_width - 1);
+        slot_y = clamp(slot_y, 0, grid_height - 1);
+        var slot = inventory[# slot_x, slot_y];
+        if (slot != -1 && is_array(slot)) {
+            var item_id = slot[0];
+            var item_type = global.item_data[item_id][6]; // Get item type (e.g., ITEM_TYPE.GENERIC)
+            if (item_type == ITEM_TYPE.GENERIC) {
+                var menu = instance_create_layer(0, 0, "GUI_Menu", obj_context_menu, {
+                    inventory: id,
+                    item_id: item_id,
+                    slot_x: slot_x,
+                    slot_y: slot_y,
+                    menu_x: gui_mouse_x,
+                    menu_y: gui_mouse_y
+                });
+                show_debug_message("Spawned context menu for " + global.item_data[item_id][0] + " (ID: " + string(item_id) + ") at slot [" + string(slot_x) + "," + string(slot_y) + "] in " + inventory_type + " at GUI [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "]");
+            }
+        }
+    }
+
     // Handle dropping
-    if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
+    if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && !instance_exists(obj_context_menu)) { // Disable drop if context menu is open
         var origin_inv = global.dragging_inventory;
         var item_id = origin_inv.dragging[0];
         var qty = origin_inv.dragging[2]; // Get the full stack quantity
