@@ -1,6 +1,9 @@
-// scr_inventory_dragging - inventory_start_dragging
-// Initiates dragging an item from the inventory grid when clicked
-// Handles multicell items by finding the top-left position and removing all linked cells
+// Script: scr_inventory_dragging
+// Description: Contains functions for handling inventory drag-and-drop mechanics, including starting a drag and dropping items with stacking support.
+
+// Function: inventory_start_dragging
+// Description: Initiates dragging an item from the inventory grid when clicked. Handles multicell items by finding the top-left position and removing all linked cells, preserving stack quantities.
+// Parameters: inv (instance of obj_inventory or child)
 
 function inventory_start_dragging(inv) {
     var gui_mouse_x = device_mouse_x_to_gui(0);
@@ -14,7 +17,7 @@ function inventory_start_dragging(inv) {
         if (slot != -1 && is_array(slot)) {
             var item_id = slot[0];          // Item ID from clicked cell
             var placement_id = slot[1];     // Unique ID linking all cells of this item
-            var qty = slot[2];              // Quantity (usually 1 for non-stackable items)
+            var qty = slot[2];              // Quantity (full stack for stackable items)
             var item_name = global.item_data[item_id][0];
             var item_width = global.item_data[item_id][1];
             var item_height = global.item_data[item_id][2];
@@ -43,7 +46,7 @@ function inventory_start_dragging(inv) {
 
             // Remove the entire item from the grid
             inventory_remove(top_left_x, top_left_y, inv.inventory);
-            show_debug_message("Started dragging " + item_name + " (ID: " + string(item_id) + ") from [" + string(top_left_x) + "," + string(top_left_y) + "] - Size: " + string(item_width) + "x" + string(item_height));
+            show_debug_message("Started dragging " + string(qty) + " " + item_name + " (ID: " + string(item_id) + ") from [" + string(top_left_x) + "," + string(top_left_y) + "] - Size: " + string(item_width) + "x" + string(item_height));
         } else {
             show_debug_message("Clicked cell [" + string(mx) + "," + string(my) + "] is empty or invalid - no dragging started");
         }
@@ -51,6 +54,10 @@ function inventory_start_dragging(inv) {
         show_debug_message("Click at [" + string(mx) + "," + string(my) + "] is outside grid bounds (" + string(inv.grid_width) + "x" + string(inv.grid_height) + ")");
     }
 }
+
+// Function: inventory_handle_drop
+// Description: Handles dropping an item into a target inventory grid, checking fit and placing it accordingly.
+// Parameters: target_inventory (instance of obj_inventory or child)
 
 function inventory_handle_drop(target_inventory) {
     if (!instance_exists(target_inventory) || !ds_exists(target_inventory.inventory, ds_type_grid)) return false;

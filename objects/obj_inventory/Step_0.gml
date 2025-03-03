@@ -1,6 +1,6 @@
 // obj_inventory
 // Event: Step
-// Description: Drag-and-drop with ground drop outside inventories and snap-back on invalid drops.
+// Description: Handles drag-and-drop with ground drop outside inventories and snap-back on invalid drops. Updated to drop stacked items on the ground with their full quantity, ensuring item_id and stack_quantity are valid and logged for debugging.
 // Variable Definitions:
 // - inventory_type: string (e.g., "backpack")
 // - grid_width: real (Number of slots wide)
@@ -74,8 +74,8 @@ if (is_open) {
     if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
         var origin_inv = global.dragging_inventory;
         var item_id = origin_inv.dragging[0];
-        var qty = origin_inv.dragging[2];
-        var item_name = global.item_data[item_id][0];
+        var qty = origin_inv.dragging[2]; // Get the full stack quantity
+        var item_name = (item_id != ITEM.NONE && item_id >= 0 && item_id < array_length(global.item_data)) ? global.item_data[item_id][0] : "No Item";
         var item_x = gui_mouse_x + origin_inv.drag_offset_x;
         var item_y = gui_mouse_y + origin_inv.drag_offset_y;
         var drop_valid = false;
@@ -117,15 +117,38 @@ if (is_open) {
                         } else {
                             show_debug_message("Blocked: Type mismatch or occupied - " + item_name + " (Type " + string(global.item_data[item_id][6]) + ") ≠ Slot " + string(drop_x) + " (Type " + string(slot_types[drop_x]) + ") in " + inventory_type);
                         }
-                    } else if (can_place_item(inventory, drop_x, drop_y, item_width, item_height)) {
-                        inventory_add_at(drop_x, drop_y, item_id, qty, inventory);
-                        origin_inv.dragging = -1;
-                        global.dragging_inventory = -1;
-                        show_debug_message("Dropped " + item_name + " at [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type);
-                        drop_valid = true;
-                        break;
                     } else {
-                        show_debug_message("Blocked: No space at [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type);
+                        // Check if dropping onto a matching stackable item
+                        var is_stackable = global.item_data[item_id][3];
+                        var max_stack = global.item_data[item_id][7];
+                        var target_slot = inventory[# drop_x, drop_y];
+                        if (is_stackable && target_slot != -1 && is_array(target_slot) && target_slot[0] == item_id) {
+                            var current_qty = target_slot[2];
+                            if (current_qty < max_stack) {
+                                var space_left = max_stack - current_qty;
+                                var add_qty = min(qty, space_left);
+                                target_slot[2] = current_qty + add_qty;
+                                qty -= add_qty;
+                                show_debug_message("Merged " + string(add_qty) + " " + item_name + " into stack at [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type + ", now " + string(target_slot[2]) + "/" + string(max_stack));
+                                if (qty <= 0) {
+                                    origin_inv.dragging = -1;
+                                    global.dragging_inventory = -1;
+                                    drop_valid = true;
+                                    break;
+                                }
+                            }
+                        }
+                        // If not fully merged or not stackable, check for empty space
+                        if (qty > 0 && can_place_item(inventory, drop_x, drop_y, item_width, item_height)) {
+                            inventory_add_at(drop_x, drop_y, item_id, qty, inventory);
+                            origin_inv.dragging = -1;
+                            global.dragging_inventory = -1;
+                            show_debug_message("Dropped " + string(qty) + " " + item_name + " at [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type);
+                            drop_valid = true;
+                            break;
+                        } else if (qty > 0) {
+                            show_debug_message("Blocked: No space or partial merge at [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type + " - " + string(qty) + " " + item_name + " remain");
+                        }
                     }
                 }
             }
@@ -134,19 +157,25 @@ if (is_open) {
         // Handle drop outcome
         if (global.dragging_inventory != -1) {
             if (over_inventory && !drop_valid) {
-                // Snap back to origin on invalid drop in any inventory
-                show_debug_message("Invalid drop, snapping back to [" + string(origin_inv.original_mx) + "," + string(origin_inv.original_my) + "] in " + origin_inv.inventory_type);
-                inventory_add_at(origin_inv.original_mx, origin_inv.original_my, item_id, qty, origin_inv.original_grid);
+                // Snap back to origin on invalid drop or partial merge
+                show_debug_message("Invalid drop or partial merge, snapping " + string(qty) + " " + item_name + " back to [" + string(origin_inv.original_mx) + "," + string(origin_inv.original_my) + "] in " + origin_inv.inventory_type);
+                if (qty > 0) inventory_add_at(origin_inv.original_mx, origin_inv.original_my, item_id, qty, origin_inv.original_grid);
                 origin_inv.dragging = -1;
                 global.dragging_inventory = -1;
             } else if (!over_inventory && instance_exists(obj_player)) {
-                // Drop on ground if outside all inventories
-                var world_x = round(obj_player.x) + irandom_range(-8, 8); // Slight offset to avoid stacking
-                var world_y = round(obj_player.y) + irandom_range(-8, 8);
-                instance_create_layer(world_x, world_y, "Instances", obj_item, { item_id: item_id });
-                origin_inv.dragging = -1;
-                global.dragging_inventory = -1;
-                show_debug_message("Dropped " + item_name + " on ground at [" + string(world_x) + "," + string(world_y) + "]");
+                // Drop on ground if outside all inventories, preserving stack quantity, only if item_id is valid
+                if (item_id != ITEM.NONE) {
+                    var world_x = round(obj_player.x) + irandom_range(-8, 8); // Slight offset to avoid stacking
+                    var world_y = round(obj_player.y) + irandom_range(-8, 8);
+                    var dropped_item = instance_create_layer(world_x, world_y, "Instances", obj_item, { item_id: item_id, stack_quantity: qty });
+                    show_debug_message("Dropped " + string(qty) + " " + item_name + " on ground at [" + string(world_x) + "," + string(world_y) + "] with stack_quantity: " + string(dropped_item.stack_quantity));
+                    origin_inv.dragging = -1;
+                    global.dragging_inventory = -1;
+                } else {
+                    show_debug_message("Cannot drop: Item has no valid item_id (ITEM.NONE)");
+                    origin_inv.dragging = -1;
+                    global.dragging_inventory = -1;
+                }
             }
         }
     }
