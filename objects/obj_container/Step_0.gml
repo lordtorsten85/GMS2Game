@@ -1,16 +1,15 @@
 // obj_container - Step Event
-// Handles proximity detection, inventory interactions, and stable collision with player
-// Opens/closes based on player distance, restricts dragging to range, blocks walk-through, and auto-opens player inventory
+// Description: Handles proximity detection, inventory interactions, and stable collision with player. Opens/closes based on player distance, restricts dragging to range, blocks walk-through, and auto-opens player inventory.
 
 if (instance_exists(obj_player)) {
     var dist = point_distance(x, y, obj_player.x, obj_player.y);
     can_interact = (dist <= proximity_range);
-    
+
     // Toggle visibility when in range and 'E' is pressed
     if (can_interact && keyboard_check_pressed(ord("E"))) {
         is_open = !is_open;
         show_debug_message((is_open ? "Opened" : "Closed") + " " + inventory_type + " at world position [" + string(x) + "," + string(y) + "]");
-        
+
         // Auto-open/close player's backpack when container opens/closes
         if (instance_exists(global.backpack)) {
             global.backpack.is_open = is_open;
@@ -19,7 +18,7 @@ if (instance_exists(obj_player)) {
             show_debug_message("Error: Player's backpack (global.backpack) not found");
         }
     }
-    
+
     // Auto-close if player moves out of range
     if (!can_interact && is_open) {
         is_open = false;
@@ -29,11 +28,11 @@ if (instance_exists(obj_player)) {
         }
     }
 
-    // Stable collision handling to make container solid, matching obj_trigger_gate
+    // Stable collision handling to make container solid
     var player = instance_place(x, y, obj_player);
     if (player != noone) {
         with (player) {
-            x = xprevious; // Revert to last valid position
+            x = xprevious;
             y = yprevious;
         }
         show_debug_message("Player blocked by " + inventory_type + " at [" + string(x) + "," + string(y) + "]");
@@ -49,7 +48,7 @@ if (is_open) {
         if (mouse_check_button_pressed(mb_left)) {
             show_debug_message("Mouse clicked over " + inventory_type + " at GUI [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "]");
             if (instance_exists(id) && ds_exists(inventory, ds_type_grid)) {
-                inventory_start_dragging(id);
+                start_inventory_drag(id); // Updated to new function name
                 if (dragging != -1) {
                     global.dragging_inventory = id;
                     show_debug_message("Dragging started for " + inventory_type);

@@ -29,3 +29,6 @@ if (sprite_index == -1) {
     sprite_index = spr_container; // Assign a default sprite if none set (define this in your project)
     show_debug_message("Assigned default sprite to obj_container at [" + string(x) + "," + string(y) + "]");
 }
+
+// Fallback for split timer (should come from event_inherited(), but ensures no crash)
+just_split_timer = 0;

@@ -1,24 +1,67 @@
-// scr_inventory_functions
-// Checks if an item can fit in the specified grid position based on its dimensions.
-// Returns true if the space is empty and within bounds, false otherwise.
+// Script: scr_inventory_functions
+// Description: Contains utility functions for inventory management, including adding, removing, and checking item placement.
 
-function inventory_can_fit(mx, my, width, height, grid) {
-    if (!ds_exists(grid, ds_type_grid)) {
-        show_debug_message("Error: Invalid grid in inventory_can_fit");
+// Function: inventory_add_item
+// Description: Adds an item to an inventory, merging with existing stacks if possible, with an optional drop-on-ground fallback.
+// Parameters: inv_instance (target inventory), item_id, qty, drop_on_ground (boolean)
+function inventory_add_item(inv_instance, item_id, qty, drop_on_ground = false) {
+    if (!instance_exists(inv_instance) || !ds_exists(inv_instance.inventory, ds_type_grid)) {
+        show_debug_message("Error: Invalid inventory instance in inventory_add_item");
         return false;
     }
-    if (mx < 0 || my < 0 || mx + width - 1 >= ds_grid_width(grid) || my + height - 1 >= ds_grid_height(grid)) return false;
-    for (var i = mx; i < mx + width; i++) {
-        for (var j = my; j < my + height; j++) {
-            if (ds_grid_get(grid, i, j) != -1) return false;
+    if (item_id < 0 || item_id >= array_length(global.item_data)) {
+        show_debug_message("Error: Invalid item_id " + string(item_id) + " in inventory_add_item");
+        return false;
+    }
+
+    var item_width = global.item_data[item_id][1];
+    var item_height = global.item_data[item_id][2];
+    var is_stackable = global.item_data[item_id][3];
+    var max_stack = global.item_data[item_id][7];
+    var item_name = global.item_data[item_id][0];
+
+    // Merge with existing stacks
+    if (is_stackable) {
+        for (var i = 0; i < inv_instance.grid_width; i++) {
+            for (var j = 0; j < inv_instance.grid_height; j++) {
+                var slot = inv_instance.inventory[# i, j];
+                if (slot != -1 && is_array(slot) && slot[0] == item_id && slot[2] < max_stack) {
+                    var add_qty = min(qty, max_stack - slot[2]);
+                    slot[2] += add_qty;
+                    qty -= add_qty;
+                    show_debug_message("Merged " + string(add_qty) + " " + item_name + " at [" + string(i) + "," + string(j) + "]");
+                    if (qty <= 0) return true;
+                }
+            }
         }
+    }
+
+    // Place new stack
+    if (qty > 0) {
+        for (var i = 0; i <= inv_instance.grid_width - item_width; i++) {
+            for (var j = 0; j <= inv_instance.grid_height - item_height; j++) {
+                if (can_place_item(inv_instance.inventory, i, j, item_width, item_height)) {
+                    inventory_add_at(i, j, item_id, qty, inv_instance.inventory);
+                    return true;
+                }
+            }
+        }
+        if (drop_on_ground && instance_exists(obj_player)) {
+            var world_x = obj_player.x + irandom_range(-8, 8);
+            var world_y = obj_player.y + irandom_range(-8, 8);
+            instance_create_layer(world_x, world_y, "Instances", obj_item, { item_id: item_id, stack_quantity: qty });
+            show_debug_message("Dropped " + string(qty) + " " + item_name + " on ground at [" + string(world_x) + "," + string(world_y) + "]");
+            return true;
+        }
+        show_debug_message("No space for " + string(qty) + " " + item_name + " in " + inv_instance.inventory_type);
+        return false;
     }
     return true;
 }
 
-// Adds an item to the inventory instance's grid, merging with existing stacks if stackable.
-// Returns true if successful, false if no space or merge is available.
-
+// Function: inventory_add (Restored for compatibility)
+// Description: Legacy function to add an item to an inventory instance’s grid, merging with stacks if stackable.
+// Parameters: inv_instance, item_id, qty
 function inventory_add(inv_instance, item_id, qty) {
     if (!instance_exists(inv_instance) || !ds_exists(inv_instance.inventory, ds_type_grid)) {
         show_debug_message("Error: Invalid inventory instance in inventory_add");
@@ -35,7 +78,7 @@ function inventory_add(inv_instance, item_id, qty) {
     var max_stack = global.item_data[item_id][7];
     var item_name = global.item_data[item_id][0];
 
-    // If stackable, try to merge with existing stacks first
+    // Merge with existing stacks
     if (is_stackable) {
         for (var i = 0; i < inv_instance.grid_width; i++) {
             for (var j = 0; j < inv_instance.grid_height; j++) {
@@ -48,20 +91,20 @@ function inventory_add(inv_instance, item_id, qty) {
                         slot[2] = current_qty + add_qty;
                         qty -= add_qty;
                         show_debug_message("Merged " + string(add_qty) + " " + item_name + " into stack at [" + string(i) + "," + string(j) + "], now " + string(slot[2]) + "/" + string(max_stack));
-                        if (qty <= 0) return true; // All items merged
+                        if (qty <= 0) return true;
                     }
                 }
             }
         }
     }
 
-    // If still items left to place (or not stackable), find a new spot
+    // Find a new spot for remaining items
     if (qty > 0) {
         for (var i = 0; i <= inv_instance.grid_width - item_width; i++) {
             for (var j = 0; j <= inv_instance.grid_height - item_height; j++) {
                 if (can_place_item(inv_instance.inventory, i, j, item_width, item_height)) {
                     inventory_add_at(i, j, item_id, qty, inv_instance.inventory);
-                    show_debug_message("Placed new stack of " + string(qty) + " " + item_name + " at [" + string(i) + "," + string(j) + "] (Size: " + string(item_width) + "x" + string(item_height) + ") in " + inv_instance.inventory_type);
+                    show_debug_message("Placed new stack of " + string(qty) + " " + item_name + " at [" + string(i) + "," + string(j) + "] in " + inv_instance.inventory_type);
                     return true;
                 }
             }
@@ -71,9 +114,9 @@ function inventory_add(inv_instance, item_id, qty) {
     return false;
 }
 
-// Adds an item to a specific position in the grid, merging stacks if applicable.
-// Uses a placement_id for multi-cell items.
-
+// Function: inventory_add_at
+// Description: Adds an item to a specific position in the grid, merging stacks if applicable.
+// Parameters: x, y, item_id, qty, grid
 function inventory_add_at(x, y, item_id, qty, grid) {
     if (!ds_exists(grid, ds_type_grid)) return;
     if (item_id < 0 || item_id >= array_length(global.item_data)) return;
@@ -93,11 +136,11 @@ function inventory_add_at(x, y, item_id, qty, grid) {
             var add_qty = min(qty, max_stack - current_qty);
             slot[2] = current_qty + add_qty;
             show_debug_message("Merged " + string(add_qty) + " " + item_name + " into stack at [" + string(x) + "," + string(y) + "], now " + string(slot[2]) + "/" + string(max_stack));
-            return; // Merge successful, no need to overwrite
+            return;
         }
     }
 
-    // Otherwise, place a new stack or overwrite non-stackable
+    // Place a new stack or overwrite non-stackable
     for (var i = x; i < x + item_width; i++) {
         for (var j = y; j < y + item_height; j++) {
             grid[# i, j] = [item_id, placement_id, qty];
@@ -105,9 +148,9 @@ function inventory_add_at(x, y, item_id, qty, grid) {
     }
     show_debug_message("Placed " + string(qty) + " " + item_name + " at [" + string(x) + "," + string(y) + "] with placement_id " + string(placement_id));
 }
-// scr_inventory_functions - inventory_remove
-// Removes an item from the specified grid position, clearing all occupied cells for multicell items
 
+// Function: inventory_remove
+// Description: Removes an item from the specified grid position, clearing all occupied cells for multicell items
 function inventory_remove(mx, my, grid) {
     if (!ds_exists(grid, ds_type_grid)) {
         show_debug_message("Error: Attempted to remove item from invalid grid");
@@ -123,7 +166,6 @@ function inventory_remove(mx, my, grid) {
 
         show_debug_message("Removing " + item_name + " (ID: " + string(item_id) + ", Placement ID: " + string(placement_id) + ") from [" + string(mx) + "," + string(my) + "] - Size: " + string(width) + "x" + string(height));
 
-        // Clear all cells occupied by this item
         for (var i = mx; i < mx + width; i++) {
             for (var j = my; j < my + height; j++) {
                 if (i < ds_grid_width(grid) && j < ds_grid_height(grid)) {
@@ -136,8 +178,9 @@ function inventory_remove(mx, my, grid) {
         show_debug_message("No valid item to remove at [" + string(mx) + "," + string(my) + "]");
     }
 }
-// Expands the inventory grid of the specified instance to new dimensions, preserving existing items.
 
+// Function: inventory_expand
+// Description: Expands the inventory grid of the specified instance to new dimensions, preserving existing items.
 function inventory_expand(inv_instance, new_width, new_height) {
     if (!instance_exists(inv_instance) || !ds_exists(inv_instance.inventory, ds_type_grid)) {
         show_debug_message("Error: Invalid inventory instance in inventory_expand");
@@ -170,14 +213,31 @@ function inventory_expand(inv_instance, new_width, new_height) {
     return true;
 }
 
-// Checks if an item can be placed at the given grid position.
+// Function: can_place_item
+// Description: Checks if an item can be placed at the given grid position.
 // Returns true if the space is empty and within bounds, false otherwise.
-
 function can_place_item(grid, x, y, w, h) {
     if (x + w > ds_grid_width(grid) || y + h > ds_grid_height(grid)) return false;
     for (var i = x; i < x + w; i++) {
         for (var j = y; j < y + h; j++) {
             if (grid[# i, j] != -1) return false;
+        }
+    }
+    return true;
+}
+
+// Function: inventory_can_fit (Restored for completeness)
+// Description: Checks if an item can fit in the specified grid position based on its dimensions.
+// Returns true if the space is empty and within bounds, false otherwise.
+function inventory_can_fit(mx, my, width, height, grid) {
+    if (!ds_exists(grid, ds_type_grid)) {
+        show_debug_message("Error: Invalid grid in inventory_can_fit");
+        return false;
+    }
+    if (mx < 0 || my < 0 || mx + width - 1 >= ds_grid_width(grid) || my + height - 1 >= ds_grid_height(grid)) return false;
+    for (var i = mx; i < mx + width; i++) {
+        for (var j = my; j < my + height; j++) {
+            if (ds_grid_get(grid, i, j) != -1) return false;
         }
     }
     return true;

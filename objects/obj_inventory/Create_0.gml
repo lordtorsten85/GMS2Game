@@ -41,3 +41,4 @@ drag_offset_y = 0;            // Offset for dragging in GUI Y
 original_mx = -1;             // Original mouse X grid position
 original_my = -1;             // Original mouse Y grid position
 original_grid = -1;           // Reference to the original inventory grid     // Reference to the original inventory grid
+just_split = false; // Flag to skip drop logic after a split

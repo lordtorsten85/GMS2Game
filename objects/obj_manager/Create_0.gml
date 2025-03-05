@@ -1,3 +1,4 @@
+// obj_manager create event
 // Initialize the player's backpack inventory in the GUI layer with specific properties
 global.backpack = instance_create_layer(0, 0, "GUI", obj_inventory, 
     {

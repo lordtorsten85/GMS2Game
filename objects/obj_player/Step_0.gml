@@ -41,12 +41,12 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0) {
         with (nearest_item_to_pickup) {
             var my_item_id = item_id;
             if (my_item_id != ITEM.NONE) { // Only pick up if not ITEM.NONE
-                var success = inventory_add(global.backpack, my_item_id, stack_quantity); // Use stack_quantity for pickup
-                if (success) {
-                    show_debug_message("Picked up Item ID: " + string(my_item_id) + " (" + global.item_data[my_item_id][0] + ") with quantity " + string(stack_quantity) + " at [" + string(x) + "," + string(y) + "]");
-                    instance_destroy(); // Remove the item from the ground
-                    other.pickup_cooldown = 15; // 0.25s cooldown at 60 FPS
-                } else {
+			var success = inventory_add_item(global.backpack, my_item_id, stack_quantity, true);
+			if (success) {
+			    show_debug_message("Picked up Item ID: " + string(my_item_id) + " (" + global.item_data[my_item_id][0] + ") with quantity " + string(stack_quantity));
+			    instance_destroy();
+			    other.pickup_cooldown = 15;
+			} else {
                     show_debug_message("Inventory full - cannot pick up Item ID: " + string(my_item_id) + " with quantity " + string(stack_quantity));
                 }
             } else {
