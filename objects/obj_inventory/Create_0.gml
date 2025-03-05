@@ -17,7 +17,6 @@
 // is_open - boolean
 // inventory - asset (ds_grid)
 
-
 // Set defaults for any missing variables
 if (!variable_instance_exists(id, "inventory_type")) inventory_type = "generic"; // e.g., "backpack", "container"
 if (!variable_instance_exists(id, "grid_width")) grid_width = 4;              // Number of slots wide
@@ -35,10 +34,12 @@ if (!variable_instance_exists(id, "inventory")) {
 }
 
 // Drag-and-drop variables
-dragging = -1;                // Array of [item_id, placement_id, qty] or -1 if not dragging
-drag_offset_x = 0;            // Offset for dragging in GUI X
-drag_offset_y = 0;            // Offset for dragging in GUI Y
-original_mx = -1;             // Original mouse X grid position
-original_my = -1;             // Original mouse Y grid position
-original_grid = -1;           // Reference to the original inventory grid     // Reference to the original inventory grid
-just_split = false; // Flag to skip drop logic after a split
+if (!variable_instance_exists(id, "dragging")) dragging = -1;                // Array of [item_id, placement_id, qty] or -1 if not dragging
+if (!variable_instance_exists(id, "drag_offset_x")) drag_offset_x = 0;      // Offset for dragging in GUI X
+if (!variable_instance_exists(id, "drag_offset_y")) drag_offset_y = 0;      // Offset for dragging in GUI Y
+if (!variable_instance_exists(id, "original_mx")) original_mx = -1;          // Original mouse X grid position
+if (!variable_instance_exists(id, "original_my")) original_my = -1;          // Original mouse Y grid position
+if (!variable_instance_exists(id, "original_grid")) original_grid = -1;      // Reference to the original inventory grid
+if (!variable_instance_exists(id, "just_split")) just_split = false;         // Flag to skip drop logic after a split
+if (!variable_instance_exists(id, "just_split_timer")) just_split_timer = 0; // Timer for split delay (60 frames = 1 second)
+if (!variable_instance_exists(id, "just_swap_timer")) just_swap_timer = 0;   // Timer for swap delay (60 frames = 1 second)

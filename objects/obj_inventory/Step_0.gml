@@ -1,11 +1,11 @@
 // obj_inventory - Step Event
-// Description: Handles drag-and-drop with ground drop outside inventories, snap-back on invalid drops, and spawns obj_context_menu on right-click. Updated for split delay and click-through block.
+// Description: Handles drag-and-drop with ground drop outside inventories, snap-back on invalid drops, and spawns obj_context_menu on right-click. Updated for equipment_slots inventory type.
 
 if (is_open) {
     var gui_mouse_x = device_mouse_x_to_gui(0);
     var gui_mouse_y = device_mouse_y_to_gui(0);
 
-    // Start dragging (block if context menu is open)
+    // Start dragging
     var bounds_width = (object_index == obj_equipment_slots ? grid_width * slot_size + (grid_width - 1) * spacing : grid_width * slot_size);
     if (point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + grid_height * slot_size)) {
         if (mouse_check_button_pressed(mb_left) && dragging == -1 && !instance_exists(obj_context_menu)) {
@@ -23,7 +23,7 @@ if (is_open) {
         }
     }
 
-    // Spawn context menu on right-click
+    // Spawn context menu on right-click for all valid item types
     if (mouse_check_button_pressed(mb_right) && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + grid_height * slot_size)) {
         var slot_x = floor((gui_mouse_x - inv_gui_x) / (object_index == obj_equipment_slots ? slot_size + spacing : slot_size));
         var slot_y = floor((gui_mouse_y - inv_gui_y) / slot_size);
@@ -33,7 +33,10 @@ if (is_open) {
         if (slot != -1 && is_array(slot)) {
             var item_id = slot[0];
             var item_type = global.item_data[item_id][6];
-            if (item_type == ITEM_TYPE.GENERIC) {
+            // Allow menu for GENERIC, UTILITY, WEAPON in backpack/equipment_slots, all in containers
+            if ((inventory_type == "backpack" && (item_type == ITEM_TYPE.GENERIC || item_type == ITEM_TYPE.UTILITY || item_type == ITEM_TYPE.WEAPON)) ||
+                (inventory_type == "equipment_slots" && (item_type == ITEM_TYPE.UTILITY || item_type == ITEM_TYPE.WEAPON)) || // Updated from "equipment"
+                inventory_type == "container") {
                 var menu = instance_create_layer(0, 0, "GUI_Menu", obj_context_menu, {
                     inventory: id,
                     item_id: item_id,

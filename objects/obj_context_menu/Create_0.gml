@@ -12,34 +12,28 @@
 // - menu_height: real (Height of the menu in pixels, default 90 for up to 3 options)
 // - options: array (Array of option strings, e.g., ["Drop", "Split Stack", "Take"])
 
-menu_width = 100;
-menu_height = 90; // Increased to accommodate up to 3 options (Drop, Split Stack, Take)
+menu_width = 128;
+menu_height = 0; // Will be set based on options
 options = [];
 
-if (inventory != noone && ds_exists(inventory.inventory, ds_type_grid) && item_id != ITEM.NONE && item_id >= 0 && item_id < array_length(global.item_data)) {
-    var item_type = global.item_data[item_id][6]; // Get item type (e.g., ITEM_TYPE.GENERIC)
-    var is_stackable = global.item_data[item_id][3]; // Check if stackable
-    var qty = 0;
-    var slot = inventory.inventory[# slot_x, slot_y];
-    if (slot != -1 && is_array(slot)) {
-        qty = slot[2]; // Get the stack quantity
-    }
-
+if (inventory.inventory_type == "backpack") {
+    var item_type = global.item_data[item_id][6];
     if (item_type == ITEM_TYPE.GENERIC) {
-        if (inventory.inventory_type == "backpack") {
-            if (is_stackable && qty > 1) {
-                options = ["Drop", "Split Stack"]; // Add Split Stack for stackable items with qty > 1
-            } else {
-                options = ["Drop"]; // Non-stackable or single-stack items
-            }
-        } else if (inventory.inventory_type == "container") {
-            if (is_stackable && qty > 1) {
-                options = ["Take"]; // For now, only Take the full stack (can expand later)
-            } else {
-                options = ["Take"]; // Non-stackable or single-stack items
-            }
-        }
+        options = ["Drop", "Split Stack"];
+    } else if (item_type == ITEM_TYPE.UTILITY || item_type == ITEM_TYPE.WEAPON) {
+        options = ["Equip", "Drop", "Mod"];
     }
+} else if (inventory.inventory_type == "equipment_slots") { // Updated from "equipment"
+    options = ["Unequip", "Drop", "Mod"];
+} else if (inventory.inventory_type == "container") {
+    options = ["Take"];
 }
 
-show_debug_message("Created context menu for " + (inventory.inventory_type != "" ? inventory.inventory_type : "unknown") + " with Item ID: " + string(item_id) + " at slot [" + string(slot_x) + "," + string(slot_y) + "] at GUI [" + string(menu_x) + "," + string(menu_y) + "]");
+menu_height = array_length(options) * 30; // 30px per option
+// Clamp menu position to stay within GUI viewport
+var gui_width = display_get_gui_width();
+var gui_height = display_get_gui_height();
+menu_x = clamp(menu_x, 0, gui_width - menu_width);
+menu_y = clamp(menu_y, 0, gui_height - menu_height);
+
+show_debug_message("Created context menu for " + inventory.inventory_type + " with Item ID: " + string(item_id) + " at slot [" + string(slot_x) + "," + string(slot_y) + "] at GUI [" + string(menu_x) + "," + string(menu_y) + "] with options: " + string(options));
