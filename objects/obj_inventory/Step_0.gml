@@ -2,6 +2,17 @@
 // Description: Handles drag-and-drop with ground drop outside inventories, snap-back on invalid drops, and spawns obj_context_menu on right-click. Updated for equipment_slots inventory type.
 
 if (is_open) {
+    if (just_swap_timer > 0) { // Existing swap timer countdown
+        just_swap_timer -= 1;
+        if (just_swap_timer == 0) show_debug_message("Swap delay ended for " + inventory_type);
+    }
+    
+    // Decrement global mouse input delay
+    if (variable_global_exists("mouse_input_delay") && global.mouse_input_delay > 0) {
+        global.mouse_input_delay -= 1;
+        if (global.mouse_input_delay == 0) show_debug_message("Mouse input delay ended");
+    }
+    
     var gui_mouse_x = device_mouse_x_to_gui(0);
     var gui_mouse_y = device_mouse_y_to_gui(0);
 
@@ -35,7 +46,7 @@ if (is_open) {
             var item_type = global.item_data[item_id][6];
             // Allow menu for GENERIC, UTILITY, WEAPON in backpack/equipment_slots, all in containers
             if ((inventory_type == "backpack" && (item_type == ITEM_TYPE.GENERIC || item_type == ITEM_TYPE.UTILITY || item_type == ITEM_TYPE.WEAPON)) ||
-                (inventory_type == "equipment_slots" && (item_type == ITEM_TYPE.UTILITY || item_type == ITEM_TYPE.WEAPON)) || // Updated from "equipment"
+                (inventory_type == "equipment_slots" && (item_type == ITEM_TYPE.UTILITY || item_type == ITEM_TYPE.WEAPON)) ||
                 inventory_type == "container") {
                 var menu = instance_create_layer(0, 0, "GUI_Menu", obj_context_menu, {
                     inventory: id,

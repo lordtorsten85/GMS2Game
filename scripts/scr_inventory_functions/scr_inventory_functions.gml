@@ -38,13 +38,26 @@ function inventory_add_item(inv_instance, item_id, qty, drop_on_ground = false) 
 
     // Place new stack
     if (qty > 0) {
+        var found_spot = false;
         for (var i = 0; i <= inv_instance.grid_width - item_width; i++) {
             for (var j = 0; j <= inv_instance.grid_height - item_height; j++) {
                 if (can_place_item(inv_instance.inventory, i, j, item_width, item_height)) {
                     inventory_add_at(i, j, item_id, qty, inv_instance.inventory);
+                    show_debug_message("Placed " + string(qty) + " " + item_name + " at [" + string(i) + "," + string(j) + "]");
                     return true;
                 }
             }
+        }
+        if (!found_spot) {
+            var grid_str = "";
+            for (var j = 0; j < inv_instance.grid_height; j++) {
+                for (var i = 0; i < inv_instance.grid_width; i++) {
+                    var slot = inv_instance.inventory[# i, j];
+                    grid_str += (slot == -1 ? "." : "X") + " ";
+                }
+                grid_str += "\n";
+            }
+            show_debug_message("No space for " + string(qty) + " " + item_name + " (" + string(item_width) + "x" + string(item_height) + ") in " + inv_instance.inventory_type + ":\n" + grid_str);
         }
         if (drop_on_ground && instance_exists(obj_player)) {
             var world_x = obj_player.x + irandom_range(-8, 8);

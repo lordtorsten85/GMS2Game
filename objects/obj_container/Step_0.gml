@@ -39,16 +39,16 @@ if (instance_exists(obj_player)) {
     }
 }
 
-// Inherit dragging/dropping logic, but restrict dragging start to proximity
+// Inherit dragging/dropping logic, but restrict dragging start to proximity and block when context menu is open
 if (is_open) {
     var gui_mouse_x = device_mouse_x_to_gui(0);
     var gui_mouse_y = device_mouse_y_to_gui(0);
 
     if (can_interact && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + grid_width * slot_size, inv_gui_y + grid_height * slot_size)) {
-        if (mouse_check_button_pressed(mb_left)) {
+        if (mouse_check_button_pressed(mb_left) && !instance_exists(obj_context_menu)) { // Block if context menu exists
             show_debug_message("Mouse clicked over " + inventory_type + " at GUI [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "]");
             if (instance_exists(id) && ds_exists(inventory, ds_type_grid)) {
-                start_inventory_drag(id); // Updated to new function name
+                start_inventory_drag(id);
                 if (dragging != -1) {
                     global.dragging_inventory = id;
                     show_debug_message("Dragging started for " + inventory_type);

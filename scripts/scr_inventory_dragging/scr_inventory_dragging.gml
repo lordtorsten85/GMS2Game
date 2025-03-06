@@ -2,9 +2,9 @@
 // Description: Contains functions for handling inventory drag-and-drop mechanics.
 
 // Function: start_inventory_drag
-// Description: Initiates dragging an item from an inventory, centering it under the mouse.
+// Description: Initiates dragging an item from an inventory, centering it under the mouse, but skips if a swap or mouse delay is active.
 function start_inventory_drag(inv) {
-    if (inv.dragging == -1 && global.dragging_inventory == -1) {
+    if (inv.dragging == -1 && global.dragging_inventory == -1 && inv.just_swap_timer == 0 && (!variable_global_exists("mouse_input_delay") || global.mouse_input_delay == 0)) { // Added mouse delay check
         var gui_mouse_x = device_mouse_x_to_gui(0);
         var gui_mouse_y = device_mouse_y_to_gui(0);
         var mx = floor((gui_mouse_x - inv.inv_gui_x) / (inv.object_index == obj_equipment_slots ? inv.slot_size + inv.spacing : inv.slot_size));
@@ -46,6 +46,10 @@ function start_inventory_drag(inv) {
                 show_debug_message("Started dragging " + string(qty) + " " + item_name + " from [" + string(top_left_x) + "," + string(top_left_y) + "] in " + inv.inventory_type + " (centered)");
             }
         }
+    } else if (inv.just_swap_timer > 0) {
+        show_debug_message("Dragging blocked due to recent swap in " + inv.inventory_type + " (" + string(inv.just_swap_timer) + " frames left)");
+    } else if (variable_global_exists("mouse_input_delay") && global.mouse_input_delay > 0) {
+        show_debug_message("Dragging blocked due to mouse input delay (" + string(global.mouse_input_delay) + " frames left)");
     }
 }
 
