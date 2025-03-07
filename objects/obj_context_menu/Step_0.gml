@@ -87,10 +87,8 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
                 show_debug_message("Cannot split stack: Quantity " + string(qty) + " is too low");
             }
         } else if (option == "Take" && inventory.inventory_type == "container" && item_id != ITEM.NONE) {
-            // Try to add to backpack without dragging
-            var success = inventory_add_item(global.backpack, item_id, qty, false); // No drop-on-ground for "Take"
+            var success = inventory_add_item(global.backpack, item_id, qty, false);
             if (success) {
-                // Clear the item from the container only if it fits
                 for (var i = top_left_x; i < top_left_x + item_width && i < inventory.grid_width; i++) {
                     for (var j = top_left_y; j < top_left_y + item_height && j < inventory.grid_height; j++) {
                         inventory.inventory[# i, j] = -1;
@@ -171,24 +169,12 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
             }
         } else if (option == "Mod" && (inventory.inventory_type == "backpack" || inventory.inventory_type == "equipment_slots") && item_id != ITEM.NONE) {
             if (global.item_data[item_id][8]) { // Check if moddable
-                // Create the mod inventory
-                var mod_inv = instance_create_layer(0, 0, "GUI", obj_mod_inventory, {
-                    parent_item_id: item_id,
-                    slot_size: 64, // Match other inventories
-                    dragging: -1,
-                    drag_offset_x: 0,
-                    drag_offset_y: 0,
-                    original_grid: -1,
-                    original_mx: 0,
-                    original_my: 0,
-                    is_open: true
-                });
-                show_debug_message("Opened mod inventory for " + global.item_data[item_id][0] + " with size " + string(global.item_data[item_id][9]) + "x" + string(global.item_data[item_id][10]));
-
-                // Create the mod background
+                // Create the mod background, which will spawn the mod inventory
                 var mod_bg = instance_create_layer(0, 0, "GUI", obj_mod_background, {
                     parent_item_id: item_id,
-                    mod_inventory: mod_inv
+                    parent_inventory: inventory,
+                    parent_slot_x: top_left_x,
+                    parent_slot_y: (inventory.inventory_type == "equipment_slots" ? 0 : top_left_y)
                 });
                 show_debug_message("Created mod background for " + global.item_data[item_id][0]);
             } else {

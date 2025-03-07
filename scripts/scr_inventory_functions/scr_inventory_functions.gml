@@ -128,7 +128,7 @@ function inventory_add(inv_instance, item_id, qty) {
 }
 
 // Function: inventory_add_at
-// Description: Adds an item to a specific position in the grid, merging stacks if applicable.
+// Description: Adds an item to a specific position in the grid, merging stacks if applicable, and initializes an empty contained_items array.
 // Parameters: x, y, item_id, qty, grid
 function inventory_add_at(x, y, item_id, qty, grid) {
     if (!ds_exists(grid, ds_type_grid)) return;
@@ -153,13 +153,16 @@ function inventory_add_at(x, y, item_id, qty, grid) {
         }
     }
 
-    // Place a new stack or overwrite non-stackable
+    // Initialize contained_items as an empty array
+    var contained_items = [];
+
+    // Place a new stack or overwrite with 4-element array
     for (var i = x; i < x + item_width; i++) {
         for (var j = y; j < y + item_height; j++) {
-            grid[# i, j] = [item_id, placement_id, qty];
+            grid[# i, j] = [item_id, placement_id, qty, contained_items];
         }
     }
-    show_debug_message("Placed " + string(qty) + " " + item_name + " at [" + string(x) + "," + string(y) + "] with placement_id " + string(placement_id));
+    show_debug_message("Placed " + string(qty) + " " + item_name + " at [" + string(x) + "," + string(y) + "] with placement_id " + string(placement_id) + ", contained_items initialized empty");
 }
 
 // Function: inventory_remove

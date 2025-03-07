@@ -1,10 +1,11 @@
 // obj_item
 // Event: Create
-// Description: Initializes an item instance on the ground with its item ID, sprite, and stack quantity, used for pickup by the player. Retrieves item_id and stack_quantity from the room editor or creation arguments, ensuring items draw correctly with cached sprite data and preserve stack quantities for ground drops. Note: stack_quantity is defined in the object editor as a real with a default of 1.
+// Description: Initializes an item instance on the ground with its item ID, sprite, stack quantity, and an empty contained_items array for potential storage.
 // Variable Definitions:
 // - item_id: real (The ID of the item from the ITEM enum, defaults to -1 in object editor)
 // - item_sprite: real (The sprite index for the item, or -1 if none)
 // - stack_quantity: real (The number of items in the stack, defined in object editor with default 1)
+// - contained_items: array (Array to store contained items, defaults to empty)
 
 item_sprite = -1; // Default to no sprite, updated based on item_id
 
@@ -32,4 +33,7 @@ if (variable_instance_exists(id, "stack_quantity")) {
     show_debug_message("Warning: No stack_quantity set for obj_item at [" + string(x) + "," + string(y) + "], using object editor default of 1");
 }
 
-show_debug_message("Created obj_item with Item ID: " + string(item_id) + ", Sprite: " + string(item_sprite) + ", and Stack Quantity: " + string(stack_quantity) + " at [" + string(x) + "," + string(y) + "]");
+// Initialize contained_items as an empty array
+contained_items = [];
+
+show_debug_message("Created obj_item with Item ID: " + string(item_id) + ", Sprite: " + string(item_sprite) + ", Stack Quantity: " + string(stack_quantity) + ", and empty contained_items at [" + string(x) + "," + string(y) + "]");

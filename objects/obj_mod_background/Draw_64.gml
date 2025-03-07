@@ -1,36 +1,42 @@
 // obj_mod_background - Draw GUI Event
-// Description: Draws the stretched background frame, item sprite on the left, and an "X" button to close.
+// Description: Draws the mod background frame, item sprite, and close button ("X") matching the inventory theme.
+// Variable Definitions:
+// - frame_x: real (GUI X position of the frame)
+// - frame_y: real (GUI Y position of the frame)
+// - frame_width: real (Width of the frame in pixels)
+// - frame_height: real (Height of the frame in pixels)
+// - parent_item_id: real (ID of the item being modded)
+// - mod_inventory: instance (Reference to the mod inventory instance)
 
-// Draw the background frame first
+var padding = 16;
+var outer_padding = 64;
+var sprite_area_size = mod_inventory.slot_size * 2; // Dynamic: 2 slots wide/tall
+
+// Draw the frame
 draw_sprite_stretched(spr_inventory_frame, 0, frame_x, frame_y, frame_width, frame_height);
-show_debug_message("Drawing mod background frame at [" + string(frame_x) + "," + string(frame_y) + "]");
+show_debug_message("Drawing mod background frame at [" + string(frame_x) + "," + string(frame_y) + "] with size [" + string(frame_width) + "," + string(frame_height) + "]");
 
-// Draw the item sprite on top of the frame, scaled
-if (item_sprite != -1 && sprite_exists(item_sprite)) {
-    var sprite_x = frame_x + 24; // 24px padding from left edge of the frame
-    var sprite_y = frame_y + (frame_height - (sprite_get_height(item_sprite) * sprite_scale)) / 2; // Center vertically, account for scaled height
-    draw_sprite_ext(item_sprite, 0, sprite_x, sprite_y, sprite_scale, sprite_scale, 0, c_white, 1.0);
-    show_debug_message("Drawing item sprite at [" + string(sprite_x) + "," + string(sprite_y) + "] with scale " + string(sprite_scale));
-} else {
-    show_debug_message("Warning: Failed to draw item sprite - item_sprite is " + string(item_sprite));
+// Draw item sprite with consistent scaling (top-left anchor)
+if (parent_item_id != ITEM.NONE) {
+    var sprite = global.item_data[parent_item_id][5];
+    var spr_width = sprite_get_width(sprite);
+    var spr_height = sprite_get_height(sprite);
+    var max_scale = min(sprite_area_size / spr_width, sprite_area_size / spr_height); // Fit within sprite area
+    var scale = min(2.0, max_scale); // Allow slight upscale
+    var sprite_x = frame_x + outer_padding; // Top-left anchor at start of sprite area
+    var sprite_y = frame_y + outer_padding + ((frame_height - (outer_padding * 2) - (spr_height * scale)) / 2); // Center vertically
+    draw_sprite_ext(sprite, 0, sprite_x, sprite_y, scale, scale, 0, c_white, 1);
+    show_debug_message("Drawing item sprite at [" + string(sprite_x) + "," + string(sprite_y) + "] with scale " + string(scale));
 }
 
-// Draw the "X" button on top
-var close_x = frame_x + frame_width - 32; // Inside frame, 32px from right edge
-var close_y = frame_y; // Inside frame, aligned with top edge
-var close_size = 32; // Size of the button (32x32)
-
-draw_set_color(c_dkgray); // Dark gray background to match theme
-draw_set_alpha(0.8);
+// Draw close button ("X") as a larger, darker cyan box
+var close_x = frame_x + frame_width - padding; // Push to right edge with padding
+var close_y = frame_y + padding; // Align with top padding
+var close_size = 48; // Increase size for visibility
+var dark_cyan = make_color_rgb(0, 128, 128); // Darker cyan, same hue as c_aqua
+draw_set_color(dark_cyan);
 draw_rectangle(close_x, close_y, close_x + close_size, close_y + close_size, false);
-
-draw_set_color(c_aqua); // Light blue "X" to match UI
-draw_set_alpha(1.0);
-draw_line_width(close_x + 8, close_y + 8, close_x + close_size - 8, close_y + close_size - 8, 4); // Diagonal \
-draw_line_width(close_x + 8, close_y + close_size - 8, close_x + close_size - 8, close_y + 8, 4); // Diagonal /
-
 draw_set_color(c_white);
-draw_set_alpha(1.0);
-
-// Debug: Log the "X" position
-show_debug_message("Drawing 'X' at GUI [" + string(close_x) + "," + string(close_y) + "] for mod background at [" + string(inv_gui_x) + "," + string(inv_gui_y) + "]");
+draw_text(close_x + 12, close_y + 12, "X"); // Adjust text position for larger box
+show_debug_message("Drawing 'X' clickable area at GUI [" + string(close_x) + "," + string(close_y) + "] to [" + string(close_x + close_size) + "," + string(close_y + close_size) + "]");
+draw_set_color(c_white);

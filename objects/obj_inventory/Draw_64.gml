@@ -1,8 +1,7 @@
-// obj_inventory
-// Event: Draw GUI
-// Description: Renders the inventory UI with a stretched frame, translucent gray grid slots, white borders, items, and stack quantity feedback. Displays hover highlights only when no item is being dragged globally (empty mouse), and drop validity (green/red) for dragged items, ensuring no overlap with items underneath during drags. Resets draw settings to prevent bleed-over.
+// obj_inventory - Draw GUI Event
+// Description: Renders the inventory UI with feedback, inheriting obj_inventory drawing
 // Variable Definitions:
-// - inventory_type: string (e.g., "backpack")
+// - inventory_type: string (Type of inventory, e.g., "backpack")
 // - grid_width: real (Number of slots wide)
 // - grid_height: real (Number of slots tall)
 // - slot_size: real (Pixel size of each slot)
@@ -36,7 +35,7 @@ if (is_open) {
         }
     }
 
-    draw_set_alpha(1.0); // Reset alpha for borders
+    draw_set_alpha(1.0);
     draw_set_color(c_white);
     for (var i = 0; i < grid_width; i++) {
         for (var j = 0; j < grid_height; j++) {
@@ -50,7 +49,7 @@ if (is_open) {
     var gui_mouse_y = device_mouse_y_to_gui(0);
 
     // Draw items first, so highlights appear on top
-    draw_set_alpha(1.0); // Reset alpha for items
+    draw_set_alpha(1.0);
     draw_set_color(c_white);
     for (var i = 0; i < grid_width; i++) {
         for (var j = 0; j < grid_height; j++) {
@@ -75,10 +74,10 @@ if (is_open) {
                         if (global.item_data[item_id][3]) { // Check if stackable
                             var qty = slot[2];
                             if (qty > 1) {
-                                draw_set_font(-1); // Default font; replace with your font if set
-                                draw_set_color(c_black); // Shadow for readability
+                                draw_set_font(-1);
+                                draw_set_color(c_black);
                                 draw_text(slot_x + 2, slot_y + 2, string(qty));
-                                draw_set_color(c_white); // Main text
+                                draw_set_color(c_white);
                                 draw_text(slot_x, slot_y, string(qty));
                             }
                         }
@@ -114,8 +113,8 @@ if (is_open) {
                         draw_rectangle(slot_x, slot_y, slot_x + slot_size - 1, slot_y + slot_size - 1, false);
                     }
                 }
-                draw_set_alpha(1.0); // Reset alpha after highlight
-                draw_set_color(c_white); // Reset color after highlight
+                draw_set_alpha(1.0);
+                draw_set_color(c_white);
             }
         }
     }
@@ -123,7 +122,7 @@ if (is_open) {
     // Drop preview when dragging
     if (global.dragging_inventory != -1 && instance_exists(global.dragging_inventory)) {
         var dragging_inv = global.dragging_inventory;
-        if (dragging_inv.dragging != -1 && is_array(dragging_inv.dragging)) { // Safety check
+        if (dragging_inv.dragging != -1 && is_array(dragging_inv.dragging)) {
             var item_id = dragging_inv.dragging[0];
             var dragged_qty = dragging_inv.dragging[2];
             var item_width = global.item_data[item_id][1];
@@ -148,7 +147,7 @@ if (is_open) {
                 if (is_stackable && target_slot != -1 && is_array(target_slot) && target_slot[0] == item_id) {
                     var current_qty = target_slot[2];
                     if (current_qty < max_stack) {
-                        can_drop = true; // Merging is possible if there's any room
+                        can_drop = true;
                         show_debug_message("Valid merge for " + global.item_data[item_id][0] + ": " + string(dragged_qty) + " onto " + string(current_qty) + "/" + string(max_stack) + " at [" + string(drop_x) + "," + string(drop_y) + "]");
                     }
                 }
@@ -162,8 +161,8 @@ if (is_open) {
                         draw_rectangle(slot_x, slot_y, slot_x + slot_size - 1, slot_y + slot_size - 1, false);
                     }
                 }
-                draw_set_alpha(1.0); // Reset alpha after highlight
-                draw_set_color(c_white); // Reset color after highlight
+                draw_set_alpha(1.0);
+                draw_set_color(c_white);
             }
         }
     }
