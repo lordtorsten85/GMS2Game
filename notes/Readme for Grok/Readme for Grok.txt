@@ -19,3 +19,6 @@ Experience Level - I'm comfortable with programming, but not an expert. I have a
 1 more thing. Don't use things like @param or @function or @description in comment blocks, it messes with Game Maker. Also, when utilizing variable definitions dont use code checks like argument(0) or arg(0), they're not necessary, instance_create_layer() (refer to the room creation code)  is sufficient to spawn in an instance with the variables set to what we want.
 
 I’d like to note that when I’m talking about variable definitions, I’m talking about the definitions created in the object editor in game maker, not defining them in the create even. So if you see variable definitions in a comment but they’re not defined in create, confirm with me if you’re unsure about their utilization before making assumptions.
+
+
+Make no assumptions! If you need to clarify something, ask!
