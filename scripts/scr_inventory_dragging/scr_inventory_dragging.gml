@@ -1,10 +1,8 @@
 // Script: scr_inventory_dragging
-// Description: Contains functions for handling inventory drag-and-drop mechanics.
-
 // Function: start_inventory_drag
-// Description: Initiates dragging an item from an inventory, centering it under the mouse, but skips if a swap or mouse delay is active.
+// Description: Initiates dragging an item, transferring mod inventory if moddable
 function start_inventory_drag(inv) {
-    if (inv.dragging == -1 && global.dragging_inventory == -1 && inv.just_swap_timer == 0 && (!variable_global_exists("mouse_input_delay") || global.mouse_input_delay == 0)) { // Added mouse delay check
+    if (inv.dragging == -1 && global.dragging_inventory == -1 && inv.just_swap_timer == 0 && (!variable_global_exists("mouse_input_delay") || global.mouse_input_delay == 0)) {
         var gui_mouse_x = device_mouse_x_to_gui(0);
         var gui_mouse_y = device_mouse_y_to_gui(0);
         var mx = floor((gui_mouse_x - inv.inv_gui_x) / (inv.object_index == obj_equipment_slots ? inv.slot_size + inv.spacing : inv.slot_size));
@@ -16,6 +14,7 @@ function start_inventory_drag(inv) {
                 var item_id = slot[0];
                 var placement_id = slot[1];
                 var qty = slot[2];
+                var contained_items = (array_length(slot) > 3 && is_array(slot[3])) ? slot[3] : [];
                 var item_name = global.item_data[item_id][0];
                 var item_width = global.item_data[item_id][1];
                 var item_height = global.item_data[item_id][2];
@@ -27,11 +26,10 @@ function start_inventory_drag(inv) {
                     while (top_left_y > 0 && is_array(inv.inventory[# mx, top_left_y - 1]) && inv.inventory[# mx, top_left_y - 1][1] == placement_id) top_left_y -= 1;
                 }
 
-                inv.dragging = [item_id, placement_id, qty];
-                // Center the item under the mouse
-                var center_x = top_left_x + (item_width / 2); // Grid center X
-                var center_y = top_left_y + (item_height / 2); // Grid center Y
-                inv.drag_offset_x = -((item_width * inv.slot_size * 0.8) / 2); // Offset to center (80% scale)
+                show_debug_message("Dragging init - Slot at [" + string(mx) + "," + string(my) + "]: " + string(slot) + ", Contained items: " + string(contained_items));
+
+                inv.dragging = [item_id, placement_id, qty, contained_items];
+                inv.drag_offset_x = -((item_width * inv.slot_size * 0.8) / 2);
                 inv.drag_offset_y = -((item_height * inv.slot_size * 0.8) / 2);
                 inv.original_mx = top_left_x;
                 inv.original_my = top_left_y;
@@ -43,23 +41,22 @@ function start_inventory_drag(inv) {
                     inventory_remove(top_left_x, top_left_y, inv.inventory);
                 }
                 global.dragging_inventory = inv;
-                show_debug_message("Started dragging " + string(qty) + " " + item_name + " from [" + string(top_left_x) + "," + string(top_left_y) + "] in " + inv.inventory_type + " (centered)");
+                show_debug_message("Started dragging " + string(qty) + " " + item_name + " from [" + string(top_left_x) + "," + string(top_left_y) + "] in " + inv.inventory_type);
             }
         }
-    } else if (inv.just_swap_timer > 0) {
-        show_debug_message("Dragging blocked due to recent swap in " + inv.inventory_type + " (" + string(inv.just_swap_timer) + " frames left)");
-    } else if (variable_global_exists("mouse_input_delay") && global.mouse_input_delay > 0) {
-        show_debug_message("Dragging blocked due to mouse input delay (" + string(global.mouse_input_delay) + " frames left)");
     }
 }
 
-// Function: inventory_handle_drop (unchanged, included for completeness)
+// Script: scr_inventory_dragging
+// Function: inventory_handle_drop
+// Description: Handles dropping an item into a target inventory, syncing mod inventory changes with contained_items.
 function inventory_handle_drop(target_inventory) {
     if (!instance_exists(target_inventory) || !ds_exists(target_inventory.inventory, ds_type_grid)) return false;
     if (target_inventory.dragging == -1 || !is_array(target_inventory.dragging)) return false;
 
     var item_id = target_inventory.dragging[0];
     var qty = target_inventory.dragging[2];
+    var contained_items = (is_array(target_inventory.dragging) && array_length(target_inventory.dragging) > 3 && target_inventory.dragging[3] != undefined) ? target_inventory.dragging[3] : [];
     var item_width = global.item_data[item_id][1];
     var item_height = global.item_data[item_id][2];
 
@@ -76,8 +73,24 @@ function inventory_handle_drop(target_inventory) {
             }
         }
         if (can_place) {
-            inventory_add_at(mx, my, item_id, qty, target_inventory.inventory);
+            inventory_add_at(mx, my, item_id, qty, target_inventory.inventory, contained_items);
             target_inventory.dragging = -1;
+
+            // If this is a mod inventory, update the parent item’s contained_items
+            if (target_inventory.object_index == obj_mod_inventory && ds_exists(target_inventory.parent_inventory, ds_type_grid)) {
+                var placement_id = target_inventory.placement_id;
+                for (var i = 0; i < ds_grid_width(target_inventory.parent_inventory); i++) {
+                    for (var j = 0; j < ds_grid_height(target_inventory.parent_inventory); j++) {
+                        var slot = target_inventory.parent_inventory[# i, j];
+                        if (is_array(slot) && slot[1] == placement_id) {
+                            slot[3] = ds_grid_to_array(target_inventory.inventory);
+                            target_inventory.parent_inventory[# i, j] = slot;
+                            show_debug_message("Updated contained_items for item at [" + string(i) + "," + string(j) + "] in parent inventory");
+                            break;
+                        }
+                    }
+                }
+            }
             return true;
         }
     }

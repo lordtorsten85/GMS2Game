@@ -29,6 +29,8 @@
   "properties":[
     {"$GMObjectProperty":"v1","%Name":"item_id","filters":[],"listItems":[],"multiselect":false,"name":"item_id","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"-1","varType":1,},
     {"$GMObjectProperty":"v1","%Name":"stack_quantity","filters":[],"listItems":[],"multiselect":false,"name":"stack_quantity","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"1","varType":0,},
+    {"$GMObjectProperty":"v1","%Name":"contained_items","filters":[],"listItems":[],"multiselect":false,"name":"contained_items","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"[]","varType":4,},
+    {"$GMObjectProperty":"v1","%Name":"placement_id","filters":[],"listItems":[],"multiselect":false,"name":"placement_id","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"0","varType":0,},
   ],
   "resourceType":"GMObject",
   "resourceVersion":"2.0",

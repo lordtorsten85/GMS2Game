@@ -1,21 +1,11 @@
-// obj_player
-// Event: Step
-// Description: Handles player movement, inventory interactions, and single-item pickup with proximity check, updated to pick up stacked items from the ground with their full quantity, respecting ITEM.NONE (-1).
-// Variable Definitions:
-// - move_speed: real (Movement speed in pixels per frame)
-// - default_move_speed: real (Default movement speed)
-// - input_direction: real (Initial movement direction)
-// - depth: real (Drawing depth)
-// - nearest_item_to_pickup: instance (Tracks the nearest obj_item instance)
-// - pickup_cooldown: real (Optional cooldown timer)
+// obj_player - Step Event
+// Description: Handles player movement, inventory interactions, and item pickup with mod inventory restoration
 
 var pickup_range = 48;
 
-// Manage pickup cooldown
 if (!variable_instance_exists(id, "pickup_cooldown")) pickup_cooldown = 0;
 if (pickup_cooldown > 0) pickup_cooldown--;
 
-// Find the nearest obj_item within pickup_range
 nearest_item_to_pickup = noone;
 var min_dist = pickup_range;
 with (obj_item) {
@@ -23,11 +13,9 @@ with (obj_item) {
     if (dist <= min_dist) {
         other.nearest_item_to_pickup = id;
         min_dist = dist;
-      //  show_debug_message("Nearest obj_item flagged: " + string(id) + " at [" + string(x) + "," + string(y) + "] with distance " + string(dist) + ", Stack Quantity: " + string(stack_quantity));
     }
 }
 
-// Toggle backpack with Tab
 if (keyboard_check_pressed(vk_tab)) {
     if (instance_exists(global.backpack)) {
         global.backpack.is_open = !global.backpack.is_open;
@@ -35,27 +23,43 @@ if (keyboard_check_pressed(vk_tab)) {
     }
 }
 
-// Pickup logic: Pick up only the nearest flagged item when 'E' is pressed
-if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0) {
-    if (nearest_item_to_pickup != noone) {
-        with (nearest_item_to_pickup) {
-            var my_item_id = item_id;
-            if (my_item_id != ITEM.NONE) { // Only pick up if not ITEM.NONE
-			var success = inventory_add_item(global.backpack, my_item_id, stack_quantity, true);
-			if (success) {
-			    show_debug_message("Picked up Item ID: " + string(my_item_id) + " (" + global.item_data[my_item_id][0] + ") with quantity " + string(stack_quantity));
-			    instance_destroy();
-			    other.pickup_cooldown = 15;
-			} else {
-                    show_debug_message("Inventory full - cannot pick up Item ID: " + string(my_item_id) + " with quantity " + string(stack_quantity));
+if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_pickup != noone) {
+    with (nearest_item_to_pickup) {
+        var my_item_id = item_id;
+        if (my_item_id != ITEM.NONE) {
+            var success = inventory_add_item(global.backpack, my_item_id, stack_quantity, true, contained_items);
+            if (success) {
+                is_in_world = false;
+                var placement_id = -1;
+                for (var i = 0; i < ds_grid_width(global.backpack.inventory); i++) {
+                    for (var j = 0; j < ds_grid_height(global.backpack.inventory); j++) {
+                        var slot = global.backpack.inventory[# i, j];
+                        if (is_array(slot) && slot[0] == my_item_id && slot[2] == stack_quantity) {
+                            placement_id = slot[1];
+                            break;
+                        }
+                    }
+                    if (placement_id != -1) break;
                 }
+                if (global.item_data[my_item_id][8] && placement_id != -1) {
+                    var mod_width = global.item_data[my_item_id][9];
+                    var mod_height = global.item_data[my_item_id][10];
+                    var mod_grid = ds_grid_create(mod_width, mod_height);
+                    if (array_length(contained_items) > 0) {
+                        array_to_ds_grid(contained_items, mod_grid);
+                        show_debug_message("Restored mod inventory for " + global.item_data[my_item_id][0] + " with placement_id " + string(placement_id) + " and contained_items: " + string(contained_items));
+                    } else {
+                        ds_grid_clear(mod_grid, -1);
+                    }
+                    global.mod_inventories[? placement_id] = mod_grid;
+                }
+                show_debug_message("Picked up " + global.item_data[my_item_id][0] + " with quantity " + string(stack_quantity) + " and contained_items: " + string(contained_items));
+                instance_destroy();
+                other.pickup_cooldown = 15;
             } else {
-                show_debug_message("Cannot pick up: Item at [" + string(x) + "," + string(y) + "] has no valid item_id (ITEM.NONE)");
+                show_debug_message("Failed to pick up " + global.item_data[my_item_id][0] + " - backpack full or placement error");
             }
         }
-        nearest_item_to_pickup = noone; // Reset to prevent multiple pickups
-        show_debug_message("Reset nearest_item_to_pickup to noone");
-    } else {
-        show_debug_message("No obj_item within " + string(pickup_range) + " pixels of player at [" + string(x) + "," + string(y) + "]");
     }
+    nearest_item_to_pickup = noone;
 }

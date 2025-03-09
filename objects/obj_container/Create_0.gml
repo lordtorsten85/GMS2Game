@@ -24,6 +24,9 @@ inventory = ds_grid_create(grid_width, grid_height);
 ds_grid_set_region(inventory, 0, 0, grid_width - 1, grid_height - 1, -1);
 show_debug_message("Force initialized container grid: 4x4");
 
+// Preload a Syringe for testing
+inventory_add_item(id, ITEM.SYRINGE, 1, true); // Updated to use inventory_add_item
+
 // Collision setup (ensure sprite has a collision mask)
 if (sprite_index == -1) {
     sprite_index = spr_container; // Assign a default sprite if none set (define this in your project)
