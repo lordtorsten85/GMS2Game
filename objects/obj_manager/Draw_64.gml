@@ -1,6 +1,4 @@
 // obj_manager - Draw GUI
-// Description: Central hub for drawing all inventories and dragged items, with hover, drop highlighting, stack quantity display, proper multicell sizing, and context menu highlight block.
-
 with (obj_inventory) {
     if (is_open) {
         var padding = 24;
@@ -44,21 +42,25 @@ with (obj_inventory) {
                     var slot_x = inv_gui_x + i * (object_index == obj_equipment_slots ? slot_size + spacing : slot_size);
                     var slot_y = inv_gui_y + j * slot_size;
 
-                    if (i == 0 || !is_array(inventory[# i-1, j]) || inventory[# i-1, j][1] != placement_id) {
-                        if (j == 0 || !is_array(inventory[# i, j-1]) || inventory[# i, j-1][1] != placement_id) {
-                            var draw_width = (object_index == obj_equipment_slots ? slot_size : item_width * slot_size);
-                            var draw_height = (object_index == obj_equipment_slots ? slot_size : item_height * slot_size);
-                            var scale_x = draw_width / sprite_get_width(sprite);
-                            var scale_y = draw_height / sprite_get_height(sprite);
-                            draw_sprite_ext(sprite, 0, slot_x, slot_y, scale_x, scale_y, 0, c_white, 1);
+                    var should_draw = (item_width == 1 && item_height == 1);
+                    if (!should_draw) {
+                        should_draw = (i == 0 || !is_array(inventory[# i-1, j]) || inventory[# i-1, j][1] != placement_id) &&
+                                      (j == 0 || !is_array(inventory[# i, j-1]) || inventory[# i, j-1][1] != placement_id);
+                    }
 
-                            if (global.item_data[item_id][3] && qty > 1) {
-                                draw_set_font(-1);
-                                draw_set_color(c_black);
-                                draw_text(slot_x + 2, slot_y + 2, string(qty));
-                                draw_set_color(c_white);
-                                draw_text(slot_x, slot_y, string(qty));
-                            }
+                    if (should_draw) {
+                        var draw_width = (object_index == obj_equipment_slots ? slot_size : item_width * slot_size);
+                        var draw_height = (object_index == obj_equipment_slots ? slot_size : item_height * slot_size);
+                        var scale_x = draw_width / sprite_get_width(sprite);
+                        var scale_y = draw_height / sprite_get_height(sprite);
+                        draw_sprite_ext(sprite, 0, slot_x, slot_y, scale_x, scale_y, 0, c_white, 1);
+
+                        if (global.item_data[item_id][3] && qty > 1) {
+                            draw_set_font(-1);
+                            draw_set_color(c_black);
+                            draw_text(slot_x + 2, slot_y + 2, string(qty));
+                            draw_set_color(c_white);
+                            draw_text(slot_x, slot_y, string(qty));
                         }
                     }
                 }
@@ -68,10 +70,17 @@ with (obj_inventory) {
         var gui_mouse_x = device_mouse_x_to_gui(0);
         var gui_mouse_y = device_mouse_y_to_gui(0);
 
-        // Hover highlight (disabled when context menu is open)
+        // Hover highlight - Fixed for accurate slot detection
         if (global.dragging_inventory == -1 && !instance_exists(obj_context_menu) && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + (object_index == obj_equipment_slots ? grid_width * (slot_size + spacing) - spacing : grid_width * slot_size), inv_gui_y + grid_height * slot_size)) {
-            var mx = floor((gui_mouse_x - inv_gui_x) / (object_index == obj_equipment_slots ? slot_size + spacing : slot_size));
+            var mx = floor((gui_mouse_x - inv_gui_x) / slot_size); // Simplified for backpack - no spacing assumption
             var my = floor((gui_mouse_y - inv_gui_y) / slot_size);
+            if (object_index == obj_equipment_slots) {
+                mx = floor((gui_mouse_x - inv_gui_x) / (slot_size + spacing));
+                my = 0; // Equipment slots are 1D
+            }
+            mx = clamp(mx, 0, grid_width - 1);
+            my = clamp(my, 0, grid_height - 1);
+
             if (mx >= 0 && mx < grid_width && my >= 0 && my < grid_height) {
                 var slot = inventory[# mx, my];
                 if (slot != -1 && is_array(slot)) {
@@ -82,7 +91,7 @@ with (obj_inventory) {
 
                     var top_left_x = mx;
                     var top_left_y = my;
-                    if (object_index != obj_equipment_slots) {
+                    if (object_index != obj_equipment_slots && item_width > 1 || item_height > 1) { // Only adjust for multi-cell
                         while (top_left_x > 0 && is_array(inventory[# top_left_x - 1, my]) && inventory[# top_left_x - 1, my][1] == placement_id) top_left_x -= 1;
                         while (top_left_y > 0 && is_array(inventory[# mx, top_left_y - 1]) && inventory[# mx, top_left_y - 1][1] == placement_id) top_left_y -= 1;
                     }
@@ -102,7 +111,7 @@ with (obj_inventory) {
             }
         }
 
-        // Drop preview
+        // Drop preview (unchanged)
         if (global.dragging_inventory != -1 && instance_exists(global.dragging_inventory)) {
             var dragging_inv = global.dragging_inventory;
             if (dragging_inv.dragging != -1 && is_array(dragging_inv.dragging) && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + (object_index == obj_equipment_slots ? grid_width * (slot_size + spacing) - spacing : grid_width * slot_size), inv_gui_y + grid_height * slot_size)) {
@@ -115,7 +124,7 @@ with (obj_inventory) {
 
                 var item_x = gui_mouse_x + dragging_inv.drag_offset_x;
                 var item_y = gui_mouse_y + dragging_inv.drag_offset_y;
-                var drop_x = floor((item_x - inv_gui_x) / slot_size);
+                var drop_x = (object_index == obj_equipment_slots) ? floor((gui_mouse_x - inv_gui_x) / (slot_size + spacing)) : floor((item_x - inv_gui_x) / slot_size);
                 var drop_y = floor((item_y - inv_gui_y) / slot_size);
 
                 if (object_index == obj_equipment_slots) {
@@ -135,11 +144,14 @@ with (obj_inventory) {
                     drop_x = clamp(drop_x, 0, grid_width - item_width);
                     drop_y = clamp(drop_y, 0, grid_height - item_height);
 
-                    var can_drop = can_place_item(inventory, drop_x, drop_y, item_width, item_height);
+                    var can_drop = inventory_can_fit(drop_x, drop_y, item_width, item_height, inventory);
                     var target_slot = inventory[# drop_x, drop_y];
                     if (is_stackable && target_slot != -1 && is_array(target_slot) && target_slot[0] == item_id) {
                         var current_qty = target_slot[2];
                         if (current_qty < max_stack) can_drop = true;
+                    }
+                    if (string_pos("mod_", inventory_type) == 1) {
+                        can_drop = can_drop && can_accept_mod(id.item_id, item_id);
                     }
 
                     draw_set_color(can_drop ? c_lime : c_red);
@@ -159,7 +171,7 @@ with (obj_inventory) {
     }
 }
 
-// Draw dragged items with 80% scaling
+// Draw dragged items (unchanged)
 if (global.dragging_inventory != -1 && instance_exists(global.dragging_inventory)) {
     var inv = global.dragging_inventory;
     if (inv.dragging != -1 && is_array(inv.dragging)) {
@@ -183,5 +195,5 @@ if (global.dragging_inventory != -1 && instance_exists(global.dragging_inventory
     }
 }
 
-draw_set_color(c_white); // Reset draw settings
+draw_set_color(c_white);
 draw_set_alpha(1.0);

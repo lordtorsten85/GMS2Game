@@ -21,7 +21,7 @@ function start_inventory_drag(inv) {
 
                 var top_left_x = mx;
                 var top_left_y = my;
-                if (inv.object_index != obj_equipment_slots) {
+                if (inv.object_index != obj_equipment_slots && (item_width > 1 || item_height > 1)) { // Only adjust for multi-cell
                     while (top_left_x > 0 && is_array(inv.inventory[# top_left_x - 1, my]) && inv.inventory[# top_left_x - 1, my][1] == placement_id) top_left_x -= 1;
                     while (top_left_y > 0 && is_array(inv.inventory[# mx, top_left_y - 1]) && inv.inventory[# mx, top_left_y - 1][1] == placement_id) top_left_y -= 1;
                 }

@@ -105,18 +105,25 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
                 if (is_array(slot)) {
                     var contained_items = (array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
                     slot[2] = keep_qty;
-                    inventory.inventory[# slot_x, slot_y] = slot;
+                    inventory.inventory[# top_left_x, top_left_y] = slot; // Update top-left slot
+                    for (var w = 0; w < item_width; w++) {
+                        for (var h = 0; h < item_height; h++) {
+                            if (w != 0 || h != 0) {
+                                inventory.inventory[# top_left_x + w, top_left_y + h] = slot; // Sync multi-cell
+                            }
+                        }
+                    }
 
                     if (inventory.dragging == -1 && global.dragging_inventory == -1) {
                         inventory.dragging = [item_id, slot[1], drag_qty, contained_items];
                         global.dragging_inventory = inventory;
                         inventory.drag_offset_x = -((item_width * inventory.slot_size * 0.8) / 2);
                         inventory.drag_offset_y = -((item_height * inventory.slot_size * 0.8) / 2);
-                        inventory.original_mx = slot_x;
-                        inventory.original_my = slot_y;
-                        inventory.original_grid = inventory.inventory;
+                        inventory.original_mx = top_left_x;
+                        inventory.original_my = top_left_y;
                         inventory.just_split_timer = 30;
                         global.mouse_input_delay = 30;
+                        show_debug_message("Split stack: " + string(keep_qty) + " kept, " + string(drag_qty) + " dragged");
                     }
                 }
             }

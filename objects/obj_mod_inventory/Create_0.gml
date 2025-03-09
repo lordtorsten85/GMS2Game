@@ -14,8 +14,13 @@ if (!variable_instance_exists(id, "parent_inventory")) parent_inventory = noone;
 if (!variable_instance_exists(id, "parent_slot_x")) parent_slot_x = 0;
 if (!variable_instance_exists(id, "parent_slot_y")) parent_slot_y = 0;
 
-// Set grid size from item data
 grid_width = global.item_data[item_id][9];
 grid_height = global.item_data[item_id][10];
 inventory = ds_grid_create(grid_width, grid_height);
 ds_grid_clear(inventory, -1);
+
+// Load existing mods
+if (ds_map_exists(global.mod_inventories, parent_inventory.inventory[# parent_slot_x, parent_slot_y][1])) {
+    var mod_grid = global.mod_inventories[? parent_inventory.inventory[# parent_slot_x, parent_slot_y][1]];
+    ds_grid_copy(inventory, mod_grid);
+}

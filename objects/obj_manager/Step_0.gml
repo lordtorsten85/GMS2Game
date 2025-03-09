@@ -1,11 +1,11 @@
 // obj_manager - Step Event
-// Description: Centralized control for inventory dragging, dropping, and interaction
 
 if (global.mouse_input_delay > 0) {
     global.mouse_input_delay--;
+    exit; // Block all input until delay clears
 }
 
-// Handle dragging start
+// Handle dragging start - Delayed to prevent immediate re-drag
 if (mouse_check_button_pressed(mb_left) && global.mouse_input_delay <= 0 && !instance_exists(obj_context_menu)) {
     with (obj_inventory) {
         if (is_open && dragging == -1 && global.dragging_inventory == -1 && just_swap_timer == 0) {
@@ -15,7 +15,7 @@ if (mouse_check_button_pressed(mb_left) && global.mouse_input_delay <= 0 && !ins
 }
 
 // Handle dragging release
-if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
+if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && global.mouse_input_delay <= 0) {
     var dragging_inv = global.dragging_inventory;
     var gui_mouse_x = device_mouse_x_to_gui(0);
     var gui_mouse_y = device_mouse_y_to_gui(0);
@@ -33,13 +33,11 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
 
     show_debug_message("Before drop - Dragging: " + string(dragging_inv.dragging) + ", Contained items: " + string(contained_items));
 
-    // Only update from mod_grid if contained_items is empty
     if (is_moddable && ds_exists(mod_grid_to_transfer, ds_type_grid) && array_length(contained_items) == 0) {
         contained_items = ds_grid_to_array(mod_grid_to_transfer);
         show_debug_message("Mod grid found for " + string(placement_id) + ", Updated contained_items: " + string(contained_items));
     }
 
-    // Check current inventory
     var bounds_width = (dragging_inv.inventory_type == "equipment_slots") ? (dragging_inv.grid_width * dragging_inv.slot_size + (dragging_inv.grid_width - 1) * dragging_inv.spacing) : (dragging_inv.grid_width * dragging_inv.slot_size);
     if (point_in_rectangle(gui_mouse_x, gui_mouse_y, dragging_inv.inv_gui_x, dragging_inv.inv_gui_y, dragging_inv.inv_gui_x + bounds_width, dragging_inv.inv_gui_y + (dragging_inv.grid_height * dragging_inv.slot_size))) {
         var target_x = (dragging_inv.inventory_type == "equipment_slots") ? floor((gui_mouse_x - dragging_inv.inv_gui_x) / (dragging_inv.slot_size + dragging_inv.spacing)) : floor((item_x - dragging_inv.inv_gui_x) / dragging_inv.slot_size);
@@ -52,58 +50,51 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
             if (y_offset > dragging_inv.slot_size * 0.75 && target_y + item_height < dragging_inv.grid_height) target_y += 1;
             target_x = clamp(target_x, 0, dragging_inv.grid_width - item_width);
             target_y = clamp(target_y, 0, dragging_inv.grid_height - item_height);
+        } else {
+            target_x = clamp(target_x, 0, dragging_inv.grid_width - 1);
+            target_y = 0; // Equipment slots are 1D
         }
 
         show_debug_message("Mouse GUI: [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "], Item: [" + string(item_x) + "," + string(item_y) + "], Target: [" + string(target_x) + "," + string(target_y) + "] in " + dragging_inv.inventory_type);
 
         if (target_x >= 0 && target_x < dragging_inv.grid_width && target_y >= 0 && target_y < dragging_inv.grid_height) {
             var target_slot = dragging_inv.inventory[# target_x, target_y];
-            var can_drop = true;
-            if (dragging_inv.inventory_type == "equipment_slots") {
-                can_drop = (target_y == 0 && global.item_data[item_id][6] == dragging_inv.slot_types[target_x] && target_slot == -1);
-            } else {
-                can_drop = inventory_can_fit(target_x, target_y, item_width, item_height, dragging_inv.inventory);
+            var can_drop = (dragging_inv.inventory_type == "equipment_slots") ? (target_y == 0 && global.item_data[item_id][6] == dragging_inv.slot_types[target_x] && target_slot == -1) : inventory_can_fit(target_x, target_y, item_width, item_height, dragging_inv.inventory);
+
+            var merge_slot = -1;
+            var merge_x = -1;
+            var merge_y = -1;
+            if (target_slot != -1 && is_array(target_slot) && target_slot[0] == item_id && global.item_data[item_id][3]) {
+                var check_placement_id = target_slot[1];
+                merge_x = target_x;
+                merge_y = target_y;
+                while (merge_x > 0 && is_array(dragging_inv.inventory[# merge_x - 1, merge_y]) && dragging_inv.inventory[# merge_x - 1, merge_y][1] == check_placement_id) merge_x -= 1;
+                while (merge_y > 0 && is_array(dragging_inv.inventory[# merge_x, merge_y - 1]) && dragging_inv.inventory[# merge_x, merge_y - 1][1] == check_placement_id) merge_y -= 1;
+                merge_slot = dragging_inv.inventory[# merge_x, merge_y];
             }
 
-            if (target_slot != -1 && is_array(target_slot) && target_slot[0] == item_id && global.item_data[item_id][3]) {
-                var current_qty = target_slot[2];
+            if (merge_slot != -1 && is_array(merge_slot) && merge_slot[0] == item_id && target_x >= merge_x && target_x < merge_x + item_width && target_y >= merge_y && target_y < merge_y + item_height) {
+                var current_qty = merge_slot[2];
                 var space_left = max_stack - current_qty;
                 if (space_left > 0 && qty > 0) {
                     var qty_to_add = min(qty, space_left);
-                    target_slot[2] = min(current_qty + qty_to_add, max_stack);
-                    dragging_inv.inventory[# target_x, target_y] = target_slot;
+                    merge_slot[2] = current_qty + qty_to_add;
+                    for (var w = 0; w < item_width; w++) {
+                        for (var h = 0; h < item_height; h++) {
+                            dragging_inv.inventory[# merge_x + w, merge_y + h] = merge_slot;
+                        }
+                    }
                     qty -= qty_to_add;
-                }
-                if (qty > 0) {
-                    var placed = false;
-                    for (var i = 0; i < dragging_inv.grid_width - item_width + 1 && !placed; i++) {
-                        for (var j = 0; j < dragging_inv.grid_height - item_height + 1 && !placed; j++) {
-                            if (inventory_can_fit(i, j, item_width, item_height, dragging_inv.inventory)) {
-                                dragging_inv.inventory[# i, j] = [item_id, placement_id, qty, contained_items];
-                                for (var w = 0; w < item_width; w++) {
-                                    for (var h = 0; h < item_height; h++) {
-                                        if (w != 0 || h != 0) {
-                                            dragging_inv.inventory[# i + w, j + h] = [item_id, placement_id, qty, contained_items];
-                                        }
-                                    }
-                                }
-                                placed = true;
-                            }
-                        }
+                    if (qty > 0) {
+                        dragging_inv.dragging[2] = qty;
+                        show_debug_message("Merged " + string(qty_to_add) + " " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "], " + string(qty) + " remain");
+                    } else {
+                        dragging_inv.dragging = -1;
+                        global.dragging_inventory = -1;
+                        show_debug_message("Merged " + string(qty_to_add) + " " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "] fully");
                     }
-                    if (!placed) {
-                        dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
-                        for (var w = 0; w < item_width; w++) {
-                            for (var h = 0; h < item_height; h++) {
-                                if (w != 0 || h != 0) {
-                                    dragging_inv.inventory[# dragging_inv.original_mx + w, dragging_inv.original_my + h] = [item_id, placement_id, qty, contained_items];
-                                }
-                            }
-                        }
-                    }
+                    global.mouse_input_delay = 30;
                 }
-                dragging_inv.dragging = -1;
-                global.dragging_inventory = -1;
             } else if (can_drop) {
                 dragging_inv.inventory[# target_x, target_y] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
@@ -117,11 +108,9 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
                 }
                 dragging_inv.dragging = -1;
                 global.dragging_inventory = -1;
-                if (dragging_inv.inventory_type == "equipment_slots") {
-                    show_debug_message("Dropped " + global.item_data[item_id][0] + " into equipment slot at [" + string(target_x) + ",0]");
-                } else {
-                    show_debug_message("Dropped " + global.item_data[item_id][0] + " into " + dragging_inv.inventory_type + " at [" + string(target_x) + "," + string(target_y) + "] with contained_items: " + string(contained_items));
-                }
+                global.mouse_input_delay = 30;
+                show_debug_message("Dropped " + string(qty) + " " + global.item_data[item_id][0] + " into " + dragging_inv.inventory_type + " at [" + string(target_x) + "," + string(target_y) + "] with contained_items: " + string(contained_items));
+                qty = 0;
             } else {
                 dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
@@ -135,13 +124,49 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
                 }
                 dragging_inv.dragging = -1;
                 global.dragging_inventory = -1;
+                global.mouse_input_delay = 30;
+                show_debug_message("Returned " + string(qty) + " " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] - no space");
+                qty = 0;
+            }
+
+            if (qty > 0) {
+                var placed = false;
+                for (var i = 0; i < dragging_inv.grid_width - item_width + 1 && !placed; i++) {
+                    for (var j = 0; j < dragging_inv.grid_height - item_height + 1 && !placed; j++) {
+                        if (inventory_can_fit(i, j, item_width, item_height, dragging_inv.inventory)) {
+                            dragging_inv.inventory[# i, j] = [item_id, placement_id, qty, contained_items];
+                            for (var w = 0; w < item_width; w++) {
+                                for (var h = 0; h < item_height; h++) {
+                                    if (w != 0 || h != 0) {
+                                        dragging_inv.inventory[# i + w, j + h] = [item_id, placement_id, qty, contained_items];
+                                    }
+                                }
+                            }
+                            show_debug_message("Placed remaining " + string(qty) + " " + global.item_data[item_id][0] + " at [" + string(i) + "," + string(j) + "] after partial merge");
+                            placed = true;
+                        }
+                    }
+                }
+                if (!placed) {
+                    dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
+                    for (var w = 0; w < item_width; w++) {
+                        for (var h = 0; h < item_height; h++) {
+                            if (w != 0 || h != 0) {
+                                dragging_inv.inventory[# dragging_inv.original_mx + w, dragging_inv.original_my + h] = [item_id, placement_id, qty, contained_items];
+                            }
+                        }
+                    }
+                    show_debug_message("Returned remaining " + string(qty) + " " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] after partial merge");
+                }
+                dragging_inv.dragging = -1;
+                global.dragging_inventory = -1;
+                global.mouse_input_delay = 30;
             }
         }
     } else {
-        // Check other inventories or ground
         var dropped = false;
         with (obj_inventory) {
-            var bounds_width = (inventory_type == "equipment_slots") ? (grid_width * slot_size + (grid_width - 1) * spacing) : (grid_width * slot_size);
+            bounds_width = (inventory_type == "equipment_slots") ? (grid_width * slot_size + (grid_width - 1) * spacing) : (grid_width * slot_size);
             if (id != dragging_inv && is_open && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + (grid_height * slot_size))) {
                 var drop_x = (inventory_type == "equipment_slots") ? floor((gui_mouse_x - inv_gui_x) / (slot_size + spacing)) : floor((item_x - inv_gui_x) / slot_size);
                 var drop_y = floor((item_y - inv_gui_y) / slot_size);
@@ -153,6 +178,9 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
                     if (y_offset > slot_size * 0.75 && drop_y + item_height < grid_height) drop_y += 1;
                     drop_x = clamp(drop_x, 0, grid_width - item_width);
                     drop_y = clamp(drop_y, 0, grid_height - item_height);
+                } else {
+                    drop_x = clamp(drop_x, 0, grid_width - 1);
+                    drop_y = 0;
                 }
 
                 show_debug_message("Cross-inventory: Mouse [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "], Item [" + string(item_x) + "," + string(item_y) + "], Drop [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type);
@@ -160,6 +188,15 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
                 if (drop_x >= 0 && drop_x < grid_width && drop_y >= 0 && drop_y < grid_height) {
                     var target_slot = inventory[# drop_x, drop_y];
                     var can_drop = (inventory_type == "equipment_slots") ? (global.item_data[item_id][6] == slot_types[drop_x] && target_slot == -1) : inventory_can_fit(drop_x, drop_y, item_width, item_height, inventory);
+
+                    if (can_drop && string_pos("mod_", inventory_type) == 1) {
+                        var parent_item_id = id.item_id;
+                        can_drop = can_accept_mod(parent_item_id, item_id);
+                        if (!can_drop) {
+                            show_debug_message("Cannot drop " + global.item_data[item_id][0] + " into " + global.item_data[parent_item_id][0] + " - incompatible mod type");
+                        }
+                    }
+
                     if (can_drop) {
                         inventory[# drop_x, drop_y] = [item_id, placement_id, qty, contained_items];
                         if (inventory_type != "equipment_slots") {
@@ -181,6 +218,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
                         }
                         dragging_inv.dragging = -1;
                         global.dragging_inventory = -1;
+                        global.mouse_input_delay = 30;
                         dropped = true;
                         if (inventory_type == "equipment_slots") {
                             show_debug_message("Dropped " + global.item_data[item_id][0] + " into equipment slot at [" + string(drop_x) + ",0] from another inventory");
@@ -192,15 +230,36 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1) {
             }
         }
         if (!dropped) {
-            instance_create_layer(obj_player.x + irandom_range(-8, 8), obj_player.y + irandom_range(-8, 8), "Instances", obj_item, {
-                item_id: item_id,
-                stack_quantity: qty,
-                placement_id: placement_id,
-                contained_items: contained_items
-            });
-            show_debug_message("Dropped " + global.item_data[item_id][0] + " on ground from " + dragging_inv.inventory_type + " with contained_items: " + string(contained_items));
+            var outside_inventory = true;
+            with (obj_inventory) {
+                if (is_open && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + (grid_height * slot_size))) {
+                    outside_inventory = false;
+                }
+            }
+            if (outside_inventory) {
+                instance_create_layer(obj_player.x + irandom_range(-8, 8), obj_player.y + irandom_range(-8, 8), "Instances", obj_item, {
+                    item_id: item_id,
+                    stack_quantity: qty,
+                    placement_id: placement_id,
+                    contained_items: contained_items
+                });
+                show_debug_message("Dropped " + global.item_data[item_id][0] + " on ground from " + dragging_inv.inventory_type + " with contained_items: " + string(contained_items));
+            } else {
+                dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
+                if (dragging_inv.inventory_type != "equipment_slots") {
+                    for (var w = 0; w < item_width; w++) {
+                        for (var h = 0; h < item_height; h++) {
+                            if (w != 0 || h != 0) {
+                                dragging_inv.inventory[# dragging_inv.original_mx + w, dragging_inv.original_my + h] = [item_id, placement_id, qty, contained_items];
+                            }
+                        }
+                    }
+                }
+                show_debug_message("Returned " + string(qty) + " " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] - invalid drop");
+            }
             dragging_inv.dragging = -1;
             global.dragging_inventory = -1;
+            global.mouse_input_delay = 30;
         }
     }
 }
