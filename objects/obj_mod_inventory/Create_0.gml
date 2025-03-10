@@ -24,3 +24,9 @@ if (ds_map_exists(global.mod_inventories, parent_inventory.inventory[# parent_sl
     var mod_grid = global.mod_inventories[? parent_inventory.inventory[# parent_slot_x, parent_slot_y][1]];
     ds_grid_copy(inventory, mod_grid);
 }
+
+// Adjust inv_gui_y to align background sprite tops with backpack
+backpack_background_top = global.backpack.inv_gui_y; // Top of backpack's spr_inventory_frame
+mod_background_offset = 24; // Top offset of mod's spr_inventory_frame (from Draw GUI or Step Event)
+frame_gui_y = backpack_background_top - mod_background_offset; // Align tops directly
+// Verify: inv_gui_y should be global.backpack.inv_gui_y - 34 if offsets are -42 and -8

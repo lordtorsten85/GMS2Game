@@ -1,13 +1,4 @@
 // obj_context_menu - Step Event
-// Description: Manages context menu options, interactions, and item transfers for inventory actions, constraining menu to screen.
-// Variable Definitions (set in object editor):
-// - inventory - asset: Reference to the target inventory instance
-// - item_id - real: ID of the selected item
-// - slot_x - real: Grid X position of the selected item
-// - slot_y - real: Grid Y position of the selected item
-// - menu_x - real: GUI X position of the menu
-// - menu_y - real: GUI Y position of the menu
-
 var gui_mouse_x = device_mouse_x_to_gui(0);
 var gui_mouse_y = device_mouse_y_to_gui(0);
 
@@ -49,12 +40,13 @@ if (instance_exists(inventory) && ds_exists(inventory.inventory, ds_type_grid) &
     menu_height = max(30, array_length(options) * 30);
 }
 
-// Close menu on left-click outside, safely handling invalid inventory
+// Close menu on left-click outside or on selection, enforcing delay
 if (mouse_check_button_pressed(mb_left)) {
     if (!point_in_rectangle(gui_mouse_x, gui_mouse_y, menu_x, menu_y, menu_x + menu_width, menu_y + menu_height)) {
         var inv_type = instance_exists(inventory) ? inventory.inventory_type : "unknown";
         instance_destroy();
-        show_debug_message("Closed context menu for " + inv_type + " with no action");
+        global.mouse_input_delay = 15; // Enforce delay on closure
+        show_debug_message("Closed context menu for " + inv_type + " with no action, set delay to 15");
     }
 }
 
@@ -104,25 +96,20 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
 
                 if (is_array(slot)) {
                     var contained_items = (array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
-                    slot[2] = keep_qty;
-                    inventory.inventory[# top_left_x, top_left_y] = slot; // Update top-left slot
-                    for (var w = 0; w < item_width; w++) {
-                        for (var h = 0; h < item_height; h++) {
-                            if (w != 0 || h != 0) {
-                                inventory.inventory[# top_left_x + w, top_left_y + h] = slot; // Sync multi-cell
-                            }
-                        }
-                    }
+                    // Remove the item from the slot before setting up the drag
+                    inventory_remove(top_left_x, top_left_y, inventory.inventory);
+                    // Add back the kept quantity
+                    inventory_add_at(top_left_x, top_left_y, item_id, keep_qty, inventory.inventory, contained_items);
 
                     if (inventory.dragging == -1 && global.dragging_inventory == -1) {
                         inventory.dragging = [item_id, slot[1], drag_qty, contained_items];
                         global.dragging_inventory = inventory;
-                        inventory.drag_offset_x = -((item_width * inventory.slot_size * 0.8) / 2);
-                        inventory.drag_offset_y = -((item_height * inventory.slot_size * 0.8) / 2);
                         inventory.original_mx = top_left_x;
                         inventory.original_my = top_left_y;
-                        inventory.just_split_timer = 30;
-                        global.mouse_input_delay = 30;
+                        inventory.drag_offset_x = -((item_width * inventory.slot_size * 0.8) / 2);
+                        inventory.drag_offset_y = -((item_height * inventory.slot_size * 0.8) / 2);
+                        inventory.just_split_timer = 0; // Reset to allow immediate context menu
+                        global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
                         show_debug_message("Split stack: " + string(keep_qty) + " kept, " + string(drag_qty) + " dragged");
                     }
                 }
@@ -143,58 +130,58 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
             var target_slot = (item_type == ITEM_TYPE.UTILITY) ? 0 : 1;
             var equip_inv = global.equipment_slots;
 
-            if (equip_inv.inventory[# target_slot, 0] == -1) {
-                var contained_items = (is_array(slot) && array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
-                equip_inv.inventory[# target_slot, 0] = [item_id, slot[1], qty, contained_items];
-                inventory_remove(top_left_x, top_left_y, inventory.inventory);
-            } else {
-                var current_item = equip_inv.inventory[# target_slot, 0];
-                var current_id = current_item[0];
-                var current_qty = current_item[2];
-                var current_width = global.item_data[current_id][1];
-                var current_height = global.item_data[current_id][2];
-                var current_contained = (array_length(current_item) > 3 && current_item[3] != undefined) ? current_item[3] : [];
+            if (instance_exists(equip_inv) && ds_exists(equip_inv.inventory, ds_type_grid)) {
+                var current_slot = equip_inv.inventory[# target_slot, 0];
+                if (is_array(current_slot)) {
+                    var current_id = current_slot[0];
+                    var current_qty = current_slot[2];
+                    var current_width = global.item_data[current_id][1];
+                    var current_height = global.item_data[current_id][2];
+                    var current_contained = (array_length(current_slot) > 3 && current_slot[3] != undefined) ? current_slot[3] : [];
+                    var backpack = global.backpack;
 
-                var temp_space = array_create(item_width * item_height, -1);
-                var temp_index = 0;
-                for (var i = top_left_x; i < top_left_x + item_width && i < inventory.grid_width; i++) {
-                    for (var j = top_left_y; j < top_left_y + item_height && j < inventory.grid_height; j++) {
-                        temp_space[temp_index] = inventory.inventory[# i, j];
-                        inventory.inventory[# i, j] = -1;
-                        temp_index++;
-                    }
-                }
+                    if (instance_exists(backpack) && ds_exists(backpack.inventory, ds_type_grid)) {
+                        // Simulate removal of the current equipped item to check space
+                        var can_swap = false;
+                        var swap_x = -1;
+                        var swap_y = -1;
 
-                var can_swap = false;
-                var swap_x = -1;
-                var swap_y = -1;
-                for (var i = 0; i <= inventory.grid_width - current_width; i++) {
-                    for (var j = 0; j <= inventory.grid_height - current_height; j++) {
-                        if (can_place_item(inventory.inventory, i, j, current_width, current_height)) {
-                            can_swap = true;
-                            swap_x = i;
-                            swap_y = j;
-                            break;
+                        // Check space as if the equipped item is removed
+                        for (var i = 0; i <= backpack.grid_width - current_width; i++) {
+                            for (var j = 0; j <= backpack.grid_height - current_height; j++) {
+                                if (inventory_can_fit(i, j, current_width, current_height, backpack.inventory)) {
+                                    can_swap = true;
+                                    swap_x = i;
+                                    swap_y = j;
+                                    break;
+                                }
+                            }
+                            if (can_swap) break;
                         }
-                    }
-                    if (can_swap) break;
-                }
 
-                if (can_swap) {
+                        if (can_swap) {
+                            var contained_items = (is_array(slot) && array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
+                            // Perform the swap
+                            equip_inv.inventory[# target_slot, 0] = [item_id, slot[1], qty, contained_items];
+                            inventory_remove(top_left_x, top_left_y, inventory.inventory); // Remove new item from backpack
+                            inventory_add_at(swap_x, swap_y, current_id, current_qty, backpack.inventory, current_contained); // Add old item back
+                            show_debug_message("Swapped " + global.item_data[item_id][0] + " into equipment slot [" + string(target_slot) + ",0], moved " + global.item_data[current_id][0] + " to backpack at [" + string(swap_x) + "," + string(swap_y) + "]");
+                        } else {
+                            // Revert if no space (should not crash)
+                            show_debug_message("No space in backpack for " + global.item_data[current_id][0] + " during swap with " + global.item_data[item_id][0]);
+                        }
+                    } else {
+                        show_debug_message("Error: Backpack instance or inventory grid not found");
+                    }
+                } else {
+                    // No item equipped, just equip the new one
                     var contained_items = (is_array(slot) && array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
                     equip_inv.inventory[# target_slot, 0] = [item_id, slot[1], qty, contained_items];
-                    inventory_add_at(swap_x, swap_y, current_id, current_qty, inventory.inventory, current_contained);
-                    global.backpack.just_swap_timer = 30;
-                    global.mouse_input_delay = 30;
-                } else {
-                    temp_index = 0;
-                    for (var i = top_left_x; i < top_left_x + item_width && i < inventory.grid_width; i++) {
-                        for (var j = top_left_y; j < top_left_y + item_height && j < inventory.grid_height; j++) {
-                            inventory.inventory[# i, j] = temp_space[temp_index];
-                            temp_index++;
-                        }
-                    }
+                    inventory_remove(top_left_x, top_left_y, inventory.inventory);
+                    show_debug_message("Equipped " + global.item_data[item_id][0] + " into slot [" + string(target_slot) + ",0]");
                 }
+            } else {
+                show_debug_message("Error: Equipment slots instance or inventory grid not found");
             }
         } else if (option == "Unequip" && inventory.inventory_type == "equipment_slots" && item_id >= 0) {
             var contained_items = (is_array(slot) && array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
@@ -207,13 +194,26 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
                 var mod_width = global.item_data[item_id][9];
                 var mod_height = global.item_data[item_id][10];
                 var contained_items = (is_array(slot) && array_length(slot) > 3 && slot[3] != undefined) ? slot[3] : [];
+
+                // Calculate mod inventory dimensions
+                var slot_size = 32;
+                var frame_w = (mod_width * slot_size) + (8 * 2);
+                var total_w = frame_w + 8 + sprite_get_width(spr_help_close);
+                var frame_h = (mod_height * slot_size) + 64;
+
+                // Calculate spawn position (X)
+                var backpack_right = global.backpack.inv_gui_x + (global.backpack.grid_width * global.backpack.slot_size);
+                var desired_x = backpack_right + 64;
+                var max_screen_width = display_get_gui_width();
+                var spawn_x = min(desired_x, max_screen_width - total_w);
+
                 var mod_inv = instance_create_layer(0, 0, "GUI", obj_mod_inventory, {
                     inventory_type: "mod_" + global.item_data[item_id][0],
                     grid_width: mod_width,
                     grid_height: mod_height,
                     slot_size: 32,
-                    inv_gui_x: global.backpack.inv_gui_x + (global.backpack.grid_width * global.backpack.slot_size) + 64,
-                    inv_gui_y: global.backpack.inv_gui_y,
+                    inv_gui_x: spawn_x,
+                    inv_gui_y: 0, // Set initially, adjusted in Create Event
                     is_open: true,
                     inventory: ds_grid_create(mod_width, mod_height),
                     item_id: item_id,
@@ -232,6 +232,7 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
             }
         }
         instance_destroy();
-        if (option != "Split Stack" && option != "Equip") global.mouse_input_delay = 5;
+        global.mouse_input_delay = 15; // Enforce delay on action completion
+        show_debug_message("Closed context menu after action " + option + ", set delay to 15");
     }
 }

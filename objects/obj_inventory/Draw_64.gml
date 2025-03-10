@@ -38,32 +38,3 @@ for (var i = 0; i < grid_width; i++) {
 draw_set_color(c_white);
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);
-
-if (string_pos("mod_", inventory_type) == 1) {
-    var frame_x = inv_gui_x - 10;
-    var frame_y = inv_gui_y - 42;
-    var frame_width = (grid_width * slot_size) + 20;
-    var frame_height = (grid_height * slot_size) + 52;
-    draw_sprite_stretched(spr_inventory_frame, 0, frame_x, frame_y, frame_width, frame_height);
-
-    var item_name = string_replace(inventory_type, "mod_", "");
-    var parent_item_id = -1;
-    for (var i = 0; i < array_length(global.item_data); i++) {
-        if (global.item_data[i] != undefined && global.item_data[i][0] == item_name) {
-            parent_item_id = i;
-            break;
-        }
-    }
-    if (parent_item_id != -1) {
-        var item_sprite = global.item_data[parent_item_id][5];
-        draw_sprite_ext(item_sprite, 0, frame_x + 10, frame_y + 10, 0.8, 0.8, 0, c_white, 1);
-    }
-
-    var close_x = frame_x + frame_width - 34;
-    var close_y = frame_y + 2;
-    draw_sprite(spr_help_close, 0, close_x, close_y);
-    if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_mouse_y, close_x, close_y, close_x + 32, close_y + 32)) {
-        is_open = false;
-        show_debug_message("Closed mod inventory via button");
-    }
-}
