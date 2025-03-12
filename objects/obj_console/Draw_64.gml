@@ -6,7 +6,7 @@ if (is_open) {
 }
 
 // Debug to check can_interact state and position
-show_debug_message("can_interact: " + string(can_interact) + ", is_open: " + string(is_open));
+//show_debug_message("can_interact: " + string(can_interact) + ", is_open: " + string(is_open));
 
 if (can_interact && !is_open) {
     var text = "Press 'E' to Interact";
@@ -40,8 +40,8 @@ if (can_interact && !is_open) {
     var text_y = gui_y; // Bottom of text
     
     // Debug prompt position
-    show_debug_message("Prompt world position: (" + string(prompt_world_x) + ", " + string(prompt_world_y) + ")");
-    show_debug_message("Prompt GUI position: (" + string(text_x) + ", " + string(text_y - text_height) + ")");
+    //show_debug_message("Prompt world position: (" + string(prompt_world_x) + ", " + string(prompt_world_y) + ")");
+    //show_debug_message("Prompt GUI position: (" + string(text_x) + ", " + string(text_y - text_height) + ")");
     
     // Draw black box background
     draw_set_alpha(0.7);

@@ -1,4 +1,12 @@
 // obj_manager - Step Event
+// Description: Manages global input, dragging, inventory closure, and updates ammo based on equipment
+// Variable Definitions (set in Create event):
+// - pause - boolean - Indicates if the game is paused
+// - pause_seq - asset - Sequence for pause screen
+// - health_max - real - Maximum player health
+// - health_current - real - Current player health
+// - ammo_counts - asset (ds_map) - Map of ammo types and counts
+
 if (global.mouse_input_delay > 0) {
     global.mouse_input_delay--;
     exit; // Block ALL input (including context menu) until delay clears
@@ -375,5 +383,28 @@ with (obj_inventory) {
             show_debug_message("Closed mod inventory, updated parent at [" + string(parent_slot_x) + "," + string(parent_slot_y) + "] with slot: " + string(parent_copy));
         }
         instance_destroy();
+    }
+}
+
+// Update ammo based on equipped weapon
+if (instance_exists(global.equipment_slots)) {
+    var weapon_slot = global.equipment_slots.inventory[# 1, 0]; // Weapon slot
+    if (is_array(weapon_slot) && weapon_slot[0] != -1) {
+        var weapon_id = weapon_slot[0];
+        var weapon_name = string_lower(global.item_data[weapon_id][0]); // e.g., "small_gun"
+        if (ds_exists(ammo_counts, ds_type_map)) {
+            if (!ds_map_exists(ammo_counts, weapon_name)) {
+                ds_map_add(ammo_counts, weapon_name, 30); // Default ammo on equip
+                ds_map_add(ammo_counts, weapon_name + "_max", 50); // Default max
+            }
+            ammo_current = ds_map_find_value(ammo_counts, weapon_name);
+            ammo_max = ds_map_find_value(ammo_counts, weapon_name + "_max");
+        } else {
+            ammo_current = 0;
+            ammo_max = 0;
+        }
+    } else {
+        ammo_current = 0;
+        ammo_max = 0;
     }
 }
