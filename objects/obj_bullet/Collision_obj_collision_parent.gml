@@ -1,0 +1,1 @@
+if (other != self) {instance_destroy();}

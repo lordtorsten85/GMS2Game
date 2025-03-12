@@ -1,8 +1,61 @@
 // obj_player - Step Event
-// Description: Handles player movement, inventory interactions, and item pickup with mod inventory restoration
+// Description: Handles player movement, inventory interactions, item pickup with mod inventory restoration, and weapon firing
 
 var pickup_range = 48;
 
+// Movement with arrow keys and WASD
+var h_input = (keyboard_check(vk_right) || keyboard_check(ord("D"))) - (keyboard_check(vk_left) || keyboard_check(ord("A")));
+var v_input = (keyboard_check(vk_down) || keyboard_check(ord("S"))) - (keyboard_check(vk_up) || keyboard_check(ord("W")));
+
+if (h_input != 0 || v_input != 0) {
+    // Calculate direction and move
+    var dir = point_direction(0, 0, h_input, v_input);
+    input_direction = dir;
+    x += lengthdir_x(move_speed, dir);
+    y += lengthdir_y(move_speed, dir);
+
+    // Update sprite based on direction
+    if (input_direction == 0) { // Right
+        sprite_index = spr_player_walk_side;
+        image_xscale = 1;
+        image_yscale = 1;
+    } else if (input_direction == 180) { // Left
+        sprite_index = spr_player_walk_side;
+        image_xscale = -1;
+        image_yscale = 1;
+    } else if (input_direction == 90) { // Up
+        sprite_index = spr_player_walk_up;
+        image_xscale = 1;
+        image_yscale = 1;
+    } else if (input_direction == 270) { // Down
+        sprite_index = spr_player_walk_down;
+        image_xscale = 1;
+        image_yscale = 1;
+    }
+} else {
+    sprite_index = spr_player_idle;
+}
+
+// Animate sprite
+image_index += 0;
+
+// Fire weapon on space bar press
+if (keyboard_check_pressed(vk_space)) {
+    // Check equipped weapon
+    if (instance_exists(global.equipment_slots)) {
+        var weapon_slot = global.equipment_slots.inventory[# 1, 0]; // Weapon slot
+        if (is_array(weapon_slot) && weapon_slot[0] != -1 && obj_manager.ammo_current > 0) {
+            // Fire bullet
+            var bullet = instance_create_layer(x, y, "Instances", obj_bullet);
+            bullet.direction = input_direction;
+            bullet.image_angle = input_direction;
+            bullet.creator = id; // Optional: track who fired the bullet
+            obj_manager.ammo_current -= 1; // Deduct ammo
+        }
+    }
+}
+
+// Existing inventory and pickup logic
 if (!variable_instance_exists(id, "pickup_cooldown")) pickup_cooldown = 0;
 if (pickup_cooldown > 0) pickup_cooldown--;
 

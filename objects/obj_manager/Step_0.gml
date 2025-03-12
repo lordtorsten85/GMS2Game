@@ -6,6 +6,8 @@
 // - health_max - real - Maximum player health
 // - health_current - real - Current player health
 // - ammo_counts - asset (ds_map) - Map of ammo types and counts
+// - ammo_current - real - Current ammo for equipped weapon
+// - ammo_max - real - Maximum ammo for equipped weapon
 
 if (global.mouse_input_delay > 0) {
     global.mouse_input_delay--;
@@ -111,7 +113,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 dragging_inv.inventory[# target_x, target_y] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
                     for (var w = 0; w < item_width; w++) {
-                        for (var h = 0; h < item_height; h++) {
+                        for (var h = 0; h <item_height; h++) {
                             if (w != 0 || h != 0) {
                                 dragging_inv.inventory[# target_x + w, target_y + h] = [item_id, placement_id, qty, contained_items];
                             }
@@ -386,7 +388,7 @@ with (obj_inventory) {
     }
 }
 
-// Update ammo based on equipped weapon
+// Update ammo based on equipped weapon (fixed to preserve current ammo)
 if (instance_exists(global.equipment_slots)) {
     var weapon_slot = global.equipment_slots.inventory[# 1, 0]; // Weapon slot
     if (is_array(weapon_slot) && weapon_slot[0] != -1) {
@@ -397,8 +399,12 @@ if (instance_exists(global.equipment_slots)) {
                 ds_map_add(ammo_counts, weapon_name, 30); // Default ammo on equip
                 ds_map_add(ammo_counts, weapon_name + "_max", 50); // Default max
             }
-            ammo_current = ds_map_find_value(ammo_counts, weapon_name);
-            ammo_max = ds_map_find_value(ammo_counts, weapon_name + "_max");
+            // Only update ammo_current if not already set or weapon changed
+            if (ammo_current == 0 || !ds_map_exists(ammo_counts, "last_weapon") || ds_map_find_value(ammo_counts, "last_weapon") != weapon_name) {
+                ammo_current = ds_map_find_value(ammo_counts, weapon_name);
+                ammo_max = ds_map_find_value(ammo_counts, weapon_name + "_max");
+                ds_map_add(ammo_counts, "last_weapon", weapon_name); // Track last weapon
+            }
         } else {
             ammo_current = 0;
             ammo_max = 0;
