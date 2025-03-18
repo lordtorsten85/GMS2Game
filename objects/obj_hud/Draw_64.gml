@@ -6,6 +6,10 @@
 // - ammo_current - real - Current ammo for equipped weapon
 // - ammo_max - real - Maximum ammo for equipped weapon
 
+// Reset drawing settings to defaults at the start
+draw_set_color(c_white);
+draw_set_alpha(1.0);
+
 // Get GUI dimensions (set by obj_camera_controller to 1280x720)
 var gui_width = display_get_gui_width();
 var gui_height = display_get_gui_height();
@@ -49,5 +53,6 @@ if (ammo_current > 0) {
     draw_text(ammo_x, ammo_y, "Ammo: " + string(ammo_current) + "/" + string(ammo_max));
 }
 
-// Reset color
+// Reset drawing settings to defaults
 draw_set_color(c_white);
+draw_set_alpha(1.0);

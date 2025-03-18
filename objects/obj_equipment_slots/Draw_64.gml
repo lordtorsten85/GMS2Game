@@ -1,10 +1,13 @@
-// obj_equipment_slots
-// Event: Draw GUI
+// obj_equipment_slots - Draw GUI Event
 // Description: Renders equipment slots with strictly 1x1 drop feedback, no inheritance.
 // Variable Definitions:
 // - Inherited from obj_inventory
 // - slot_types: array (Type requirements per slot)
 // - spacing: real (Pixel gap between slots)
+
+// Reset drawing settings to defaults
+draw_set_color(c_white);
+draw_set_alpha(1.0);
 
 if (is_open) {
     if (!ds_exists(inventory, ds_type_grid)) {
@@ -26,7 +29,7 @@ if (is_open) {
         draw_rectangle(slot_x, slot_y, slot_x + slot_size - 1, slot_y + slot_size - 1, false);
     }
 
-    draw_set_alpha(1.0);
+    draw_set_alpha(1.0); // Reset alpha after background
     draw_set_color(c_white);
     for (var i = 0; i < grid_width; i++) {
         var slot_x = inv_gui_x + i * (slot_size + spacing);
@@ -43,6 +46,9 @@ if (is_open) {
                 var scale = slot_size / max(sprite_get_width(sprite), sprite_get_height(sprite));
                 var slot_x = inv_gui_x + i * (slot_size + spacing);
                 var slot_y = inv_gui_y;
+                // Reset drawing settings before drawing item
+                draw_set_color(c_white);
+                draw_set_alpha(1.0);
                 draw_sprite_ext(sprite, 0, slot_x, slot_y, scale, scale, 0, c_white, 1);
             }
         }
@@ -64,6 +70,7 @@ if (is_open) {
                     var slot_x = inv_gui_x + drop_x * (slot_size + spacing);
                     var slot_y = inv_gui_y;
                     draw_rectangle(slot_x, slot_y, slot_x + slot_size - 1, slot_y + slot_size - 1, false); // Hard 1x1 box, no inheritance
+                    // Reset alpha and color immediately after
                     draw_set_alpha(1.0);
                     draw_set_color(c_white);
                 }
@@ -71,3 +78,7 @@ if (is_open) {
         }
     }
 }
+
+// Reset drawing settings to defaults
+draw_set_color(c_white);
+draw_set_alpha(1.0);

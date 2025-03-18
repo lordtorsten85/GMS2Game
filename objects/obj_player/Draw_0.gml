@@ -1,11 +1,16 @@
 // obj_player - Draw Event
 // Description: Draws the player sprite, equipped weapon, and text prompt above the nearest item if within range
 
-// Draw player sprite
-draw_self();
+// Reset drawing settings to defaults
+draw_set_color(c_white); // Reset to default color
+draw_set_alpha(1.0); // Reset to full opacity
 
-if (move_speed > default_move_speed) {
-    draw_sprite_ext(sprite_index, image_index, xprevious, yprevious, image_xscale * 1.1, image_yscale * 1.1, 0, $FFFFFF & $ffffff, 0.2);
+// Draw player sprite
+draw_self(); // Draws the player animation
+
+// Draw motion blur effect if moving faster than default
+if (variable_instance_exists(id, "default_move_speed") && move_speed > default_move_speed) {
+    draw_sprite_ext(sprite_index, image_index, xprevious, yprevious, image_xscale * 1.1, image_yscale * 1.1, 0, c_white, 0.2);
 }
 
 // Draw equipped weapon
@@ -36,7 +41,10 @@ if (instance_exists(global.equipment_slots)) {
             weapon_yscale = 1;
         }
         
-        draw_sprite_ext(weapon_sprite, 0, x + offset_x, y + offset_y, weapon_xscale, weapon_yscale, weapon_angle, c_white, 1);
+        // Reset drawing settings before drawing weapon
+        draw_set_color(c_white);
+        draw_set_alpha(1.0);
+        draw_sprite_ext(weapon_sprite, 0, x + offset_x, y + offset_y, weapon_xscale, weapon_yscale, weapon_angle, c_white, 1.0);
     }
 }
 
@@ -48,10 +56,13 @@ if (nearest_item_to_pickup != noone && instance_exists(nearest_item_to_pickup)) 
     var prompt_x = nearest_item_to_pickup.x - string_width(text) / 2; // Center above item
     var prompt_y = nearest_item_to_pickup.y - 20; // 20 pixels above item
 
+    // Reset drawing settings before text
     draw_set_color(c_black); // Shadow for readability
     draw_text(prompt_x + 1, prompt_y + 1, text);
     draw_set_color(c_white); // Main text
     draw_text(prompt_x, prompt_y, text);
 }
 
-draw_set_color(c_white); // Reset color
+// Reset drawing settings to defaults at the end
+draw_set_color(c_white);
+draw_set_alpha(1.0);
