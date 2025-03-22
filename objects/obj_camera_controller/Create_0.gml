@@ -17,7 +17,7 @@ view_visible[0] = true;
 view_camera[0] = global.cam;
 
 // Set window size (non-fullscreen)
-window_set_fullscreen(false);
+window_set_fullscreen(true);
 window_set_size(1280, 720);
 surface_resize(application_surface, 1280, 720);
 display_set_gui_size(1280, 720); // Explicitly set GUI size to match window
