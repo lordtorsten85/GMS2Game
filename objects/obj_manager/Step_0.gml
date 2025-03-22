@@ -414,3 +414,12 @@ if (instance_exists(global.equipment_slots)) {
         ammo_max = 0;
     }
 }
+
+// obj_manager - Step Event
+if (enemies_alerted && alert_timer > 0) {
+    alert_timer--;
+    if (alert_timer <= 0) {
+        enemies_alerted = false;
+        show_debug_message("Enemy alert state reset - all enemies back to patrol");
+    }
+}

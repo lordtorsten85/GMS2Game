@@ -14,12 +14,17 @@ if (instance_exists(player)) {
         player_detected = true;
         last_player_x = player.x;
         last_player_y = player.y;
+        with (obj_manager) {
+            enemies_alerted = true;
+            alert_timer = 10 * game_get_speed(gamespeed_fps);
+            show_debug_message("Enemy " + other.point_owner + " detected player - all enemies alerted!");
+        }
     }
 }
 
 switch (state) {
     case "patrol":
-        if (player_detected) {
+        if (player_detected || obj_manager.enemies_alerted) {
             state = "detected";
             stored_target = current_target;
             stored_index = patrol_index;
@@ -29,6 +34,8 @@ switch (state) {
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
+                    image_angle = 0;
                 } else {
                     path_x = player.x;
                     path_y = player.y;
@@ -48,8 +55,8 @@ switch (state) {
             if (is_moving) {
                 target_direction = dir;
                 facing_direction = angle_lerp(facing_direction, target_direction, 0.15);
-                image_xscale = (move_x < 0) ? -1 : 1; // Flip sprite based on X movement
-                image_angle = 0; // No rotation
+                image_xscale = (move_x < 0) ? -1 : 1;
+                image_angle = 0;
             }
 
             if (point_distance(x, y, path_x, path_y) < move_speed) {
@@ -59,6 +66,8 @@ switch (state) {
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
+                    image_angle = 0;
                 } else if (point_distance(x, y, current_target.x, current_target.y) < move_speed) {
                     x = current_target.x;
                     y = current_target.y;
@@ -70,7 +79,7 @@ switch (state) {
                             path_x = path_get_point_x(path, path_point_index);
                             path_y = path_get_point_y(path, path_point_index);
                             target_direction = point_direction(x, y, path_x, path_y);
-                            image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1; // Flip for new target
+                            image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
                             image_angle = 0;
                         } else {
                             path_x = x;
@@ -84,7 +93,7 @@ switch (state) {
         break;
 
     case "detected":
-        if (player_detected) {
+        if (player_detected || obj_manager.enemies_alerted) {
             chase_recalc_timer--;
             if (chase_recalc_timer <= 0) {
                 if (instance_exists(player)) {
@@ -93,6 +102,8 @@ switch (state) {
                         path_x = path_get_point_x(path, path_point_index);
                         path_y = path_get_point_y(path, path_point_index);
                         target_direction = point_direction(x, y, path_x, path_y);
+                        image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
+                        image_angle = 0;
                     } else {
                         path_x = player.x;
                         path_y = player.y;
@@ -113,8 +124,8 @@ switch (state) {
             if (is_moving) {
                 target_direction = dir;
                 facing_direction = angle_lerp(facing_direction, target_direction, 0.15);
-                image_xscale = (move_x < 0) ? -1 : 1; // Flip sprite based on X movement
-                image_angle = 0; // No rotation
+                image_xscale = (move_x < 0) ? -1 : 1;
+                image_angle = 0;
             }
             if (point_distance(x, y, path_x, path_y) < move_speed) {
                 if (path_get_number(path) > path_point_index + 1) {
@@ -122,7 +133,7 @@ switch (state) {
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1; // Flip for new target
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
                     image_angle = 0;
                 }
             }
@@ -131,24 +142,34 @@ switch (state) {
             search_timer = 10 * game_get_speed(gamespeed_fps);
             search_wander_timer = 0;
             arrived_at_last = false;
+            // Store last player position on search entry
+            if (instance_exists(player)) {
+                last_player_x = player.x;
+                last_player_y = player.y;
+            }
+            // Force path to last known position
+            path_clear_points(path); // Reset path
             if (mp_grid_path(grid, path, x, y, last_player_x, last_player_y, true)) {
                 path_point_index = 1;
                 path_x = path_get_point_x(path, path_point_index);
                 path_y = path_get_point_y(path, path_point_index);
                 target_direction = point_direction(x, y, path_x, path_y);
-                image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1; // Flip for new target
+                image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
                 image_angle = 0;
+                show_debug_message(point_owner + " entering search - heading to last player pos: (" + string(last_player_x) + ", " + string(last_player_y) + ")");
             } else {
                 path_x = last_player_x;
                 path_y = last_player_y;
                 target_direction = point_direction(x, y, path_x, path_y);
-                show_debug_message("Path to last known position failed for " + point_owner);
+                image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
+                image_angle = 0;
+                show_debug_message("Path to last known position failed for " + point_owner + " - direct move to (" + string(last_player_x) + ", " + string(last_player_y) + ")");
             }
         }
         break;
 
     case "search":
-        if (player_detected) {
+        if (player_detected || obj_manager.enemies_alerted) {
             state = "detected";
             if (instance_exists(player)) {
                 if (mp_grid_path(grid, path, x, y, player.x, player.y, true)) {
@@ -156,6 +177,8 @@ switch (state) {
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
+                    image_angle = 0;
                 } else {
                     path_x = player.x;
                     path_y = player.y;
@@ -172,11 +195,11 @@ switch (state) {
                 y += move_y;
                 target_direction = dir;
                 facing_direction = angle_lerp(facing_direction, target_direction, 0.15);
-                image_xscale = (move_x < 0) ? -1 : 1; // Flip sprite based on X movement
-                image_angle = 0; // No rotation
+                image_xscale = (move_x < 0) ? -1 : 1;
+                image_angle = 0;
             }
 
-            show_debug_message("Search State - " + point_owner + " | Pos: (" + string(x) + ", " + string(y) + ") | Path: (" + string(path_x) + ", " + string(path_y) + ") | Target Dir: " + string(target_direction) + " | Facing Dir: " + string(facing_direction) + " | Moving: " + string(point_distance(x, y, path_x, path_y) >= move_speed) + " | Wander Timer: " + string(search_wander_timer) + " | Arrived: " + string(arrived_at_last));
+            show_debug_message("Search State - " + point_owner + " | Pos: (" + string(x) + ", " + string(y) + ") | Path: (" + string(path_x) + ", " + string(path_y) + ") | Last Player: (" + string(last_player_x) + ", " + string(last_player_y) + ") | Target Dir: " + string(target_direction) + " | Facing Dir: " + string(facing_direction) + " | Moving: " + string(point_distance(x, y, path_x, path_y) >= move_speed) + " | Wander Timer: " + string(search_wander_timer) + " | Arrived: " + string(arrived_at_last));
 
             if (point_distance(x, y, path_x, path_y) < move_speed) {
                 x = path_x; // Snap to target
@@ -186,10 +209,11 @@ switch (state) {
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1; // Flip for new target
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
                     image_angle = 0;
                 } else if (!arrived_at_last && point_distance(x, y, last_player_x, last_player_y) < move_speed) {
                     arrived_at_last = true;
+                    show_debug_message(point_owner + " arrived at last player pos: (" + string(last_player_x) + ", " + string(last_player_y) + ")");
                 }
             }
 
@@ -198,16 +222,19 @@ switch (state) {
             } else if (arrived_at_last) {
                 var wander_x = last_player_x + irandom_range(-50, 50);
                 var wander_y = last_player_y + irandom_range(-50, 50);
+                path_clear_points(path); // Reset path for wandering
                 if (mp_grid_path(grid, path, x, y, wander_x, wander_y, true)) {
                     path_point_index = 1;
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1; // Flip for new target
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
                     image_angle = 0;
+                    show_debug_message(point_owner + " wandering to new pos: (" + string(wander_x) + ", " + string(wander_y) + ")");
                 } else {
                     path_x = x;
                     path_y = y;
+                    show_debug_message("Wander path failed for " + point_owner);
                 }
                 search_wander_timer = game_get_speed(gamespeed_fps) * 2;
             }
@@ -222,7 +249,7 @@ switch (state) {
                     path_x = path_get_point_x(path, path_point_index);
                     path_y = path_get_point_y(path, path_point_index);
                     target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1; // Flip for new target
+                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
                     image_angle = 0;
                 } else {
                     path_x = x;
