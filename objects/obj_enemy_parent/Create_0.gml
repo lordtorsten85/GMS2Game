@@ -40,3 +40,13 @@ image_speed = 0.2;         // Set to your preferred 0.2
 // Chase variables
 stored_target = noone;     // Stores next nav point when chasing
 stored_index = 0;          // Stores patrol_index for resuming
+
+// Add to existing Create event
+alert_icon_timer = 0; // Tracks animation duration (in steps)
+alert_icon_scale = 0; // Scale for pop-up animation
+alert_icon_alpha = 0; // Alpha for fade-out
+alert_icon_duration = game_get_speed(gamespeed_fps); // 1 second (e.g., 60 steps at 60 FPS)
+
+// Health
+max_hp = 50; // Maximum health
+hp = max_hp; // Current health

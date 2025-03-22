@@ -1,4 +1,4 @@
-// obj_console - Create Event
+// obj_equipment_slots - Create Event
 // Initializes the console inventory and sets up event triggering state.
 
 // Call the parent (obj_inventory) Create Event to initialize inherited variables

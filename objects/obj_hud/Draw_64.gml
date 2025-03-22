@@ -53,6 +53,19 @@ if (ammo_current > 0) {
     draw_text(ammo_x, ammo_y, "Ammo: " + string(ammo_current) + "/" + string(ammo_max));
 }
 
+// Enemy state text below health bar
+var alert_x = health_x;
+var alert_y = health_y + 40; // Below health bar (20px from top + 32px sprite height + 8px padding)
+if (instance_exists(obj_manager)) {
+    if (obj_manager.enemies_alerted) {
+        var alert_seconds = ceil(obj_manager.alert_timer / game_get_speed(gamespeed_fps));
+        draw_text(alert_x, alert_y, "ALERT! " + string(alert_seconds) + "s");
+    } else if (search_timer_max > 0) {
+        var search_seconds = ceil(search_timer_max / game_get_speed(gamespeed_fps));
+        draw_text(alert_x, alert_y, "SEARCHING " + string(search_seconds) + "s");
+    }
+}
+
 // Reset drawing settings to defaults
 draw_set_color(c_white);
 draw_set_alpha(1.0);

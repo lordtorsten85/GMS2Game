@@ -82,3 +82,6 @@ alert_timer = 0; // Will count down after player is lost
 
 // Create HUD instance
 global.hud = instance_create_layer(0, 0, "GUI", obj_hud);
+
+// Initialize global.equipment array to track equipped item IDs
+global.equipment = array_create(2, -1); // 2 slots: [0] for utility, [1] for weapon, -1 means empty

@@ -28,7 +28,11 @@ draw_primitive_end();
 draw_set_alpha(1);
 draw_set_color(c_white);
 
-// Debug: Draw facing_direction as a line
-draw_set_color(c_red);
-draw_line(x, y, x + lengthdir_x(50, facing_direction), y + lengthdir_y(50, facing_direction));
+// Draw alert icon if active
+if (alert_icon_timer > 0) {
+    var icon_x = x;
+    var icon_y = y - sprite_height - 10; // Above the enemy (adjust 10px offset as needed)
+    draw_sprite_ext(spr_enemy_alert, 0, icon_x, icon_y, alert_icon_scale, alert_icon_scale, 0, c_white, alert_icon_alpha);
+}
+
 draw_set_color(c_white);

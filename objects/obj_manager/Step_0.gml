@@ -232,6 +232,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
 
                     if (can_drop) {
                         inventory[# drop_x, drop_y] = [item_id, placement_id, qty, contained_items];
+						global.equipment[drop_x] = item_id; // Sync global.equipment with the dropped item
                         if (inventory_type != "equipment_slots") {
                             for (var w = 0; w < item_width; w++) {
                                 for (var h = 0; h < item_height; h++) {

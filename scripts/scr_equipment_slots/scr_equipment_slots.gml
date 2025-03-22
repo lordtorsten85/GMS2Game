@@ -8,6 +8,12 @@ function equip_unequip_item(item_id, slot_type, action) {
         return false;
     }
 
+    // Ensure global.equipment is initialized
+    if (!variable_global_exists("equipment") || !is_array(global.equipment)) {
+        global.equipment = array_create(2, -1); // Initialize if missing
+        show_debug_message("Initialized global.equipment as [2, -1] array");
+    }
+
     var item_name = global.item_data[item_id][0];
     var item_type = global.item_data[item_id][6]; // Assuming type is at index 6
     var slot_col = (slot_type == ITEM_TYPE.UTILITY) ? 0 : 1;
@@ -48,19 +54,16 @@ function equip_unequip_item(item_id, slot_type, action) {
             // Safely retrieve the source slot from the ds_grid
             var source_slot = backpack.inventory[# source_slot_x, source_slot_y];
             if (!is_array(source_slot) || array_length(source_slot) < 1) {
-                show_debug_message("Invalid source slot data for " + item_name + " at [" + string(source_slot_x) + "," + string(source_slot_y) + "], value: " + string(source_slot) + ", type: " + string(typeof(source_slot)));
+                show_debug_message("Invalid source slot data for " + item_name);
                 return false;
             }
             var source_qty = source_slot[2];
             var source_contained = (array_length(source_slot) > 3 && source_slot[3] != undefined) ? source_slot[3] : [];
-            var temp_source_slot = array_create(array_length(source_slot));
-            array_copy(temp_source_slot, 0, source_slot, 0, array_length(source_slot));
-            show_debug_message("Copied source slot: " + string(temp_source_slot) + ", type: " + string(typeof(temp_source_slot)) + ", length: " + string(array_length(temp_source_slot)));
 
             // Check if equipment slot is empty
             if (equip_inv.inventory[# slot_col, 0] == -1) {
                 equip_inv.inventory[# slot_col, 0] = [item_id, irandom(10000), source_qty, source_contained];
-                global.equipment[slot_col] = item_id;
+                global.equipment[slot_col] = item_id; // Sync here
                 inventory_remove(source_slot_x, source_slot_y, backpack.inventory);
                 success = true;
                 show_debug_message("Equipped " + item_name + " in " + (slot_type == ITEM_TYPE.UTILITY ? "utility" : "weapon") + " slot via menu");
@@ -68,7 +71,7 @@ function equip_unequip_item(item_id, slot_type, action) {
                 // Try to swap with existing item
                 var existing_slot = equip_inv.inventory[# slot_col, 0];
                 if (!is_array(existing_slot) || array_length(existing_slot) < 1) {
-                    show_debug_message("Invalid existing slot data at [" + string(slot_col) + ",0], value: " + string(existing_slot) + ", type: " + string(typeof(existing_slot)));
+                    show_debug_message("Invalid existing slot data at [" + string(slot_col) + ",0]");
                     return false;
                 }
                 var existing_item_id = existing_slot[0];
@@ -76,13 +79,8 @@ function equip_unequip_item(item_id, slot_type, action) {
                 var existing_height = global.item_data[existing_item_id][2];
                 var existing_qty = existing_slot[2];
                 var existing_contained = (array_length(existing_slot) > 3 && existing_slot[3] != undefined) ? existing_slot[3] : [];
-                var temp_existing_slot = array_create(array_length(existing_slot));
-                array_copy(temp_existing_slot, 0, existing_slot, 0, array_length(existing_slot));
-                show_debug_message("Copied existing slot: " + string(temp_existing_slot) + ", type: " + string(typeof(temp_existing_slot)) + ", length: " + string(array_length(temp_existing_slot)));
 
                 // Temporarily remove the source item to simulate freed space
-                var temp_state = [[source_slot_x, source_slot_y, temp_source_slot], [slot_col, 0, temp_existing_slot]];
-                show_debug_message("Temp state constructed: " + string(temp_state) + ", type: " + string(typeof(temp_state)));
                 inventory_remove(source_slot_x, source_slot_y, backpack.inventory);
 
                 var can_swap = false;
@@ -92,7 +90,7 @@ function equip_unequip_item(item_id, slot_type, action) {
                 with (backpack) {
                     for (var i = 0; i <= grid_width - existing_width; i++) {
                         for (var j = 0; j <= grid_height - existing_height; j++) {
-                            if (inventory_can_fit(i, j, existing_width, existing_height, inventory)) { // Correct function call with backpack's grid
+                            if (inventory_can_fit(i, j, existing_width, existing_height, inventory)) {
                                 can_swap = true;
                                 swap_x = i;
                                 swap_y = j;
@@ -106,24 +104,29 @@ function equip_unequip_item(item_id, slot_type, action) {
                 if (can_swap) {
                     inventory_add_at(swap_x, swap_y, existing_item_id, existing_qty, backpack.inventory, existing_contained);
                     equip_inv.inventory[# slot_col, 0] = [item_id, irandom(10000), source_qty, source_contained];
-                    global.equipment[slot_col] = item_id;
+                    global.equipment[slot_col] = item_id; // Sync here
                     success = true;
-                    show_debug_message("Swapped " + item_name + " with " + global.item_data[existing_item_id][0] + " via menu, moved to [" + string(swap_x) + "," + string(swap_y) + "]");
+                    show_debug_message("Swapped " + item_name + " with " + global.item_data[existing_item_id][0]);
                 } else {
-                    inventory_add_at(temp_state[0][0], temp_state[0][1], temp_state[0][2][0], temp_state[0][2][2], backpack.inventory, (array_length(temp_state[0][2]) > 3 && temp_state[0][2][3] != undefined) ? temp_state[0][2][3] : []);
-                    equip_inv.inventory[# temp_state[1][0], temp_state[1][1]] = temp_state[1][2];
-                    show_debug_message("No room in inventory to swap " + item_name + ", rolled back");
+                    // Rollback if no space
+                    inventory_add_at(source_slot_x, source_slot_y, item_id, source_qty, backpack.inventory, source_contained);
+                    show_debug_message("No room to swap " + item_name + ", rolled back");
                 }
             }
         } else {
-            show_debug_message("Cannot equip " + item_name + ": Wrong type for " + (slot_type == ITEM_TYPE.UTILITY ? "utility" : "weapon") + " slot");
+            show_debug_message("Cannot equip " + item_name + ": Wrong type for slot");
         }
     } else if (action == "unequip") {
-        if (global.equipment[slot_col] == item_id) {
-            // Get the existing slot from equipment
+        // Ensure slot_col is valid
+        if (slot_col < 0 || slot_col >= array_length(global.equipment)) {
+            show_debug_message("Invalid slot_col " + string(slot_col) + " for unequip");
+            return false;
+        }
+
+        if (global.equipment[slot_col] == item_id) { // Line 122 - now safe
             var existing_slot = equip_inv.inventory[# slot_col, 0];
             if (!is_array(existing_slot) || array_length(existing_slot) < 1) {
-                show_debug_message("Invalid existing slot data at [" + string(slot_col) + ",0], value: " + string(existing_slot) + ", type: " + string(typeof(existing_slot)));
+                show_debug_message("Invalid existing slot data at [" + string(slot_col) + ",0]");
                 return false;
             }
             var existing_item_id = existing_slot[0];
@@ -139,7 +142,7 @@ function equip_unequip_item(item_id, slot_type, action) {
             with (backpack) {
                 for (var i = 0; i <= grid_width - existing_width; i++) {
                     for (var j = 0; j <= grid_height - existing_height; j++) {
-                        if (inventory_can_fit(i, j, existing_width, existing_height, inventory)) { // Correct function call with backpack's grid
+                        if (inventory_can_fit(i, j, existing_width, existing_height, inventory)) {
                             can_unequip = true;
                             unequip_x = i;
                             unequip_y = j;
@@ -153,14 +156,14 @@ function equip_unequip_item(item_id, slot_type, action) {
             if (can_unequip) {
                 inventory_add_at(unequip_x, unequip_y, existing_item_id, existing_qty, backpack.inventory, existing_contained);
                 equip_inv.inventory[# slot_col, 0] = -1;
-                global.equipment[slot_col] = "";
+                global.equipment[slot_col] = -1; // Sync here (changed from "" to -1 for consistency)
                 success = true;
-                show_debug_message("Unequipped " + item_name + " from " + (slot_type == ITEM_TYPE.UTILITY ? "utility" : "weapon") + " slot to [" + string(unequip_x) + "," + string(unequip_y) + "] via menu");
+                show_debug_message("Unequipped " + item_name + " to [" + string(unequip_x) + "," + string(unequip_y) + "]");
             } else {
                 show_debug_message("No room in inventory to unequip " + item_name);
             }
         } else {
-            show_debug_message("Item " + item_name + " not equipped in " + (slot_type == ITEM_TYPE.UTILITY ? "utility" : "weapon") + " slot");
+            show_debug_message("Item " + item_name + " not equipped in slot " + string(slot_col));
         }
     }
 

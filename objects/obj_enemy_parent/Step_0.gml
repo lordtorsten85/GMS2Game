@@ -22,12 +22,35 @@ if (instance_exists(player)) {
     }
 }
 
+// Update alert icon animation
+if (alert_icon_timer > 0) {
+    alert_icon_timer--;
+    var progress = 1 - (alert_icon_timer / alert_icon_duration); // 0 to 1 over duration
+    if (progress < 0.2) {
+        // 0 to 0.2s: Quick scale up to 1.5
+        alert_icon_scale = (progress / 0.2) * 1.5; // 0 to 1.5
+        alert_icon_alpha = 1;
+    } else if (progress < 0.4) {
+        // 0.2s to 0.4s: Scale down to 1
+        alert_icon_scale = 1.5 - (((progress - 0.2) / 0.2) * 0.5); // 1.5 to 1
+        alert_icon_alpha = 1;
+    } else {
+        // 0.4s to 1s: Fade out
+        alert_icon_scale = 1;
+        alert_icon_alpha = 1 - ((progress - 0.4) / 0.6); // 1 to 0 over 0.6s
+    }
+}
+
 switch (state) {
     case "patrol":
         if (player_detected || obj_manager.enemies_alerted) {
             state = "detected";
             stored_target = current_target;
             stored_index = patrol_index;
+            // Trigger alert icon
+            alert_icon_timer = alert_icon_duration;
+            alert_icon_scale = 0;
+            alert_icon_alpha = 1;
             if (instance_exists(player)) {
                 if (mp_grid_path(grid, path, x, y, player.x, player.y, true)) {
                     path_point_index = 1;
@@ -142,13 +165,11 @@ switch (state) {
             search_timer = 10 * game_get_speed(gamespeed_fps);
             search_wander_timer = 0;
             arrived_at_last = false;
-            // Store last player position on search entry
             if (instance_exists(player)) {
                 last_player_x = player.x;
                 last_player_y = player.y;
             }
-            // Force path to last known position
-            path_clear_points(path); // Reset path
+            path_clear_points(path);
             if (mp_grid_path(grid, path, x, y, last_player_x, last_player_y, true)) {
                 path_point_index = 1;
                 path_x = path_get_point_x(path, path_point_index);
@@ -171,6 +192,9 @@ switch (state) {
     case "search":
         if (player_detected || obj_manager.enemies_alerted) {
             state = "detected";
+            alert_icon_timer = alert_icon_duration;
+            alert_icon_scale = 0;
+            alert_icon_alpha = 1;
             if (instance_exists(player)) {
                 if (mp_grid_path(grid, path, x, y, player.x, player.y, true)) {
                     path_point_index = 1;
@@ -202,7 +226,7 @@ switch (state) {
             show_debug_message("Search State - " + point_owner + " | Pos: (" + string(x) + ", " + string(y) + ") | Path: (" + string(path_x) + ", " + string(path_y) + ") | Last Player: (" + string(last_player_x) + ", " + string(last_player_y) + ") | Target Dir: " + string(target_direction) + " | Facing Dir: " + string(facing_direction) + " | Moving: " + string(point_distance(x, y, path_x, path_y) >= move_speed) + " | Wander Timer: " + string(search_wander_timer) + " | Arrived: " + string(arrived_at_last));
 
             if (point_distance(x, y, path_x, path_y) < move_speed) {
-                x = path_x; // Snap to target
+                x = path_x;
                 y = path_y;
                 if (path_get_number(path) > path_point_index + 1) {
                     path_point_index++;
@@ -222,7 +246,7 @@ switch (state) {
             } else if (arrived_at_last) {
                 var wander_x = last_player_x + irandom_range(-50, 50);
                 var wander_y = last_player_y + irandom_range(-50, 50);
-                path_clear_points(path); // Reset path for wandering
+                path_clear_points(path);
                 if (mp_grid_path(grid, path, x, y, wander_x, wander_y, true)) {
                     path_point_index = 1;
                     path_x = path_get_point_x(path, path_point_index);
