@@ -1,9 +1,9 @@
 {
   "$GMScript":"v1",
-  "%Name":"scr_navigate_to_point",
+  "%Name":"angle_lerp",
   "isCompatibility":false,
   "isDnD":false,
-  "name":"scr_navigate_to_point",
+  "name":"angle_lerp",
   "parent":{
     "name":"Scripts",
     "path":"folders/Scripts.yy",

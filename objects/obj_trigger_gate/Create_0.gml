@@ -2,7 +2,7 @@
 // has a string variable definition "my_tag" which is used to link it with a console
 // in the room editor so its events are triggered by only one console
 /// obj_trigger_gate - Create
-
+event_inherited();
 state = "closed";
 
 image_speed = 0;

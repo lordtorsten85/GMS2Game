@@ -1,30 +1,36 @@
-// obj_enemy_parent - Room Start Event
-// Description: Collects navigation points from obj_nav_point instances with detailed debugging
+// Object: obj_enemy_parent
+// Event: Room Start
+// Description: Collects nav points, sets up motion planning grid, and initializes patrol.
 
-nav_points = [];
-current_nav_index = 0;
-var temp_points = ds_map_create();
-show_debug_message("Enemy point_owner: " + point_owner); // Log the enemy's point_owner
-with (obj_nav_point) {
-    var nav_owner = variable_instance_exists(id, "point_owner") ? point_owner : "default";
-    var enemy_owner = variable_instance_exists(other.id, "point_owner") ? other.point_owner : "default";
-    show_debug_message("Nav point_owner: " + nav_owner + " at (" + string(x) + ", " + string(y) + ")"); // Log each nav point's owner
-    if (nav_owner == enemy_owner) {
-        ds_map_add(temp_points, point_index, [x, y]);
-        show_debug_message("Found nav point for " + nav_owner + " at index " + string(point_index) + ": (" + string(x) + ", " + string(y) + ")");
+patrol_points = []; // Reset array
+var nav_count = instance_number(obj_nav_point);
+for (var i = 0; i < nav_count; i++) {
+    var nav = instance_find(obj_nav_point, i);
+    if (nav.point_owner == point_owner) {
+        array_push(patrol_points, nav);
     }
 }
-var max_index = ds_map_size(temp_points) - 1;
-for (var i = 0; i <= max_index; i++) {
-    if (ds_map_exists(temp_points, i)) {
-        nav_points[i] = temp_points[? i];
+
+// Sort patrol_points by point_index
+array_sort(patrol_points, function(a, b) {
+    return a.point_index - b.point_index;
+});
+
+// Setup motion planning grid
+grid = mp_grid_create(0, 0, room_width div 32, room_height div 32, 32, 32); // 32x32 cells, adjust if needed
+mp_grid_add_instances(grid, obj_collision_parent, false); // Mark collision objects as obstacles
+
+// Set initial target if points exist
+if (array_length(patrol_points) > 0) {
+    current_target = patrol_points[0];
+    if (mp_grid_path(grid, path, x, y, current_target.x, current_target.y, true)) {
+        path_x = path_get_point_x(path, 1); // First point after start
+        path_y = path_get_point_y(path, 1);
     } else {
-        show_debug_message("Missing nav point at index " + string(i) + " for " + point_owner);
+        path_x = x; // Fallback if no path found
+        path_y = y;
     }
-}
-ds_map_destroy(temp_points);
-
-show_debug_message("Total nav points for " + point_owner + ": " + string(array_length(nav_points)));
-if (array_length(nav_points) == 0) {
-    show_debug_message("Error: No nav points found for " + point_owner + ". Check Room Editor settings for point_owner match.");
+    patrol_index = 0;
+} else {
+    current_target = noone; // No points found, stay still
 }

@@ -1,32 +1,19 @@
-// If there wasn't a collision
-// in the previous X position
-var wallx = instance_place(xprevious, y, [obj_collision_parent]);
-if (!(wallx > 0))
-{
-	// Then move back to that
-	// point on the X axis
-	x = xprevious;
-y = y;
+// Calculate intended movement
+var x_move = x - xprevious;
+var y_move = y - yprevious;
+
+// Apply X movement and check collision
+if (x_move != 0) {
+    var wallx = instance_place(x, yprevious, obj_collision_parent); // Check X at previous Y
+    if (wallx > 0 && wallx.collision_active) {
+        x = xprevious; // Block X movement
+    }
 }
 
-else
-{
-	// If there wasn't a collision
-	// in the previous y position
-	var wally = instance_place(x, yprevious, [obj_collision_parent]);
-if (!(wally > 0))
-{
-	// Then move back to that
-		// point on the Y axis
-		x = x;
-y = yprevious;
-}
-
-	else
-{
-	// Otherwise just move back
-		// on both X and Y axes
-		x = xprevious;
-y = yprevious;
-}
+// Apply Y movement and check collision
+if (y_move != 0) {
+    var wally = instance_place(x, y, obj_collision_parent); // Check Y at current X
+    if (wally > 0 && wally.collision_active) {
+        y = yprevious; // Block Y movement
+    }
 }
