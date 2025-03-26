@@ -10,6 +10,7 @@ if (state == "opening") {
         solid   = false;   // no collision
         state   = "open";  // done
 		collision_active = false;
+		update_collision_grid();
     }
 }
 // If we’re closing:
@@ -22,5 +23,6 @@ else if (state == "closing") {
         image_index = 0;
         image_speed = 0;
         state   = "closed";
+		update_collision_grid();
     }
 }

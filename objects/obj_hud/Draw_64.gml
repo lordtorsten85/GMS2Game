@@ -1,71 +1,56 @@
 // obj_hud - Draw GUI Event
-// Description: Renders health and ammo on the HUD with a black background (equipment slots drawn by obj_manager)
-// Variable Definitions (set in Create event):
-// - health_current - real - Current player health
-// - health_max - real - Maximum player health
-// - ammo_current - real - Current ammo for equipped weapon
-// - ammo_max - real - Maximum ammo for equipped weapon
-
-// Reset drawing settings to defaults at the start
 draw_set_color(c_white);
 draw_set_alpha(1.0);
 
-// Get GUI dimensions (set by obj_camera_controller to 1280x720)
 var gui_width = display_get_gui_width();
 var gui_height = display_get_gui_height();
 
-// Calculate equipment slots dimensions (including spr_inventory_frame border)
-var slots_width = global.equipment_slots.grid_width * global.equipment_slots.slot_size + (global.equipment_slots.grid_width - 1) * global.equipment_slots.spacing; // 2 * 64 + 1 * 64 = 192px
-var slots_height = global.equipment_slots.grid_height * global.equipment_slots.slot_size; // 1 * 64 = 64px
-var padding = 24; // From obj_manager Draw GUI (spr_inventory_frame padding)
-var slots_total_width = slots_width + 2 * padding; // 192 + 48 = 240px
-var slots_total_height = slots_height + 2 * padding; // 64 + 48 = 112px
-var slots_y = global.equipment_slots.inv_gui_y; // Top of the slots (bottom-aligned)
+var slots_width = global.equipment_slots.grid_width * global.equipment_slots.slot_size + (global.equipment_slots.grid_width - 1) * global.equipment_slots.spacing;
+var slots_height = global.equipment_slots.grid_height * global.equipment_slots.slot_size;
+var padding = 24;
+var slots_total_width = slots_width + 2 * padding;
+var slots_total_height = slots_height + 2 * padding;
+var slots_y = global.equipment_slots.inv_gui_y;
 
-// Black background under HUD (starting from bottom)
-var hud_height = slots_total_height + 20; // 112px + 20px padding = 132px
+var hud_height = slots_total_height + 20;
 var background_x = 0;
-var background_y = gui_height - hud_height; // Anchor to bottom
+var background_y = gui_height - hud_height;
 var background_width = gui_width;
 var background_height = hud_height;
 draw_set_color(c_black);
 draw_rectangle(background_x, background_y, background_x + background_width, background_y + background_height, false);
 
-// Dash-style health bar (bottom-left, horizontal, tighter spacing)
 var health_x = 10;
-var health_y = background_y + 20; // Closer to top of background (20px from top)
-var dash_sprite_width = 32; // spr_HUD_health_bar is 32x32px
-var dash_actual_width = 5; // Actual dash width, overlapping for tighter look
-var max_dashes = floor(health_max / 10); // Each dash represents 10 HP
-var current_dashes = floor(health_current / 10); // Number of dashes to draw
+var health_y = background_y + 20;
+var dash_sprite_width = 32;
+var dash_actual_width = 5;
+var max_dashes = floor(health_max / 10);
+var current_dashes = floor(health_current / 10);
 for (var i = 0; i < max_dashes; i++) {
-    var dash_x = health_x + (i * dash_actual_width); // 5px spacing to overlap
-    draw_set_color(i < current_dashes ? c_green : c_red); // Green for full, red for empty
-    draw_sprite(spr_HUD_health_bar, 0, dash_x, health_y); // Draw each dash horizontally
+    var dash_x = health_x + (i * dash_actual_width);
+    draw_set_color(i < current_dashes ? c_green : c_red);
+    draw_sprite(spr_HUD_health_bar, 0, dash_x, health_y);
 }
 draw_set_color(c_white);
 draw_text(health_x, health_y - 20, "HP: " + string(health_current) + "/" + string(health_max));
 
-// Ammo counter (bottom-right, adjusted for visibility)
-var ammo_x = gui_width - 200; // Adjusted to 1080 (within 1280px GUI)
-var ammo_y = background_y + (hud_height - 20); // Align with bottom of background
+var ammo_x = gui_width - 200;
+var ammo_y = background_y + (hud_height - 20);
 if (ammo_current > 0) {
     draw_text(ammo_x, ammo_y, "Ammo: " + string(ammo_current) + "/" + string(ammo_max));
 }
 
-// Enemy state text below health bar
 var alert_x = health_x;
-var alert_y = health_y + 40; // Below health bar (20px from top + 32px sprite height + 8px padding)
+var alert_y = health_y + 40;
 if (instance_exists(obj_manager)) {
-    if (obj_manager.enemies_alerted) {
-        var alert_seconds = ceil(obj_manager.alert_timer / game_get_speed(gamespeed_fps));
+    if (obj_manager.enemies_alerted && global.alert_timer > 0) {
+        var alert_seconds = ceil(global.alert_timer / game_get_speed(gamespeed_fps));
         draw_text(alert_x, alert_y, "ALERT! " + string(alert_seconds) + "s");
-    } else if (search_timer_max > 0) {
-        var search_seconds = ceil(search_timer_max / game_get_speed(gamespeed_fps));
-        draw_text(alert_x, alert_y, "SEARCHING " + string(search_seconds) + "s");
+    } else if (global.search_timer > 0) {
+        var search_seconds = ceil(global.search_timer / game_get_speed(gamespeed_fps));
+        draw_text(alert_x, alert_y, "SEARCH: " + string(search_seconds) + "s");
     }
 }
 
-// Reset drawing settings to defaults
 draw_set_color(c_white);
 draw_set_alpha(1.0);

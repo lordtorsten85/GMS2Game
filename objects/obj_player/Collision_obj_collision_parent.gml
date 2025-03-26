@@ -1,3 +1,4 @@
+// obj_player Collision with obj_collision_parent
 // Calculate intended movement
 var x_move = x - xprevious;
 var y_move = y - yprevious;

@@ -22,7 +22,7 @@ switch (state) {
             if (player_detected && alert_cooldown <= 0) {
                 with (obj_manager) {
                     enemies_alerted = true;
-                    alert_timer = 10 * game_get_speed(gamespeed_fps);
+                    global.alert_timer = 10 * game_get_speed(gamespeed_fps); // Use global.alert_timer
                     show_debug_message("Camera detected player - all enemies alerted!");
                 }
                 alert_cooldown = alert_cooldown_duration;
@@ -44,7 +44,7 @@ switch (state) {
             if (player_detected && alert_cooldown <= 0) {
                 with (obj_manager) {
                     enemies_alerted = true;
-                    alert_timer = 10 * game_get_speed(gamespeed_fps);
+                    global.alert_timer = 10 * game_get_speed(gamespeed_fps); // Use global.alert_timer
                     show_debug_message("Camera re-detected player - all enemies alerted!");
                 }
                 alert_cooldown = alert_cooldown_duration;

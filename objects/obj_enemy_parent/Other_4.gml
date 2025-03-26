@@ -1,8 +1,11 @@
-// Object: obj_enemy_parent
-// Event: Room Start
-// Description: Collects nav points, sets up motion planning grid, and initializes patrol.
+// obj_enemy_parent - Room Start Event
+// Collects nav points and sets up motion planning grid with dynamic collisions.
 
-patrol_points = []; // Reset array
+// Variable Definitions:
+// - point_owner (string): Unique identifier matching nav points to this enemy.
+
+// Reset patrol points array
+patrol_points = [];
 var nav_count = instance_number(obj_nav_point);
 for (var i = 0; i < nav_count; i++) {
     var nav = instance_find(obj_nav_point, i);
@@ -17,20 +20,40 @@ array_sort(patrol_points, function(a, b) {
 });
 
 // Setup motion planning grid
-grid = mp_grid_create(0, 0, room_width div 32, room_height div 32, 32, 32); // 32x32 cells, adjust if needed
-mp_grid_add_instances(grid, obj_collision_parent, false); // Mark collision objects as obstacles
+if (grid != noone) mp_grid_destroy(grid);
+grid = mp_grid_create(0, 0, room_width div 32, room_height div 32, 32, 32);
 
-// Set initial target if points exist
-if (array_length(patrol_points) > 0) {
-    current_target = patrol_points[0];
-    if (mp_grid_path(grid, path, x, y, current_target.x, current_target.y, true)) {
-        path_x = path_get_point_x(path, 1); // First point after start
-        path_y = path_get_point_y(path, 1);
-    } else {
-        path_x = x; // Fallback if no path found
-        path_y = y;
+// Add active collisions to grid
+var collision_count = instance_number(obj_collision_parent);
+for (var i = 0; i < collision_count; i++) {
+    var col = instance_find(obj_collision_parent, i);
+    var is_active = true;
+    if (variable_instance_exists(col, "collision_active")) {
+        is_active = col.collision_active;
     }
-    patrol_index = 0;
+    if (is_active) {
+        var left_cell = col.bbox_left div 32;
+        var top_cell = col.bbox_top div 32;
+        var right_cell = col.bbox_right div 32;
+        var bottom_cell = col.bbox_bottom div 32;
+        for (var xx = left_cell; xx <= right_cell; xx++) {
+            for (var yy = top_cell; yy <= bottom_cell; yy++) {
+                mp_grid_add_cell(grid, xx, yy);
+            }
+        }
+    }
+}
+
+// Set initial target
+if (array_length(patrol_points) > 0) {
+    target_x = patrol_points[current_point].x;
+    target_y = patrol_points[current_point].y;
+    if (!mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+        target_x = x;
+        target_y = y;
+        show_debug_message("No initial path for " + point_owner);
+    }
 } else {
-    current_target = noone; // No points found, stay still
+    target_x = x;
+    target_y = y;
 }

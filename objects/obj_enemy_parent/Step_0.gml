@@ -1,286 +1,179 @@
-// Object: obj_enemy_parent
-// Event: Step
-if (current_target == noone && state != "detected") exit;
+// obj_enemy_parent - Step Event
+// Handles patrol, alert, and search states with player detection and dynamic pathfinding.
 
-var player = instance_nearest(x, y, obj_player);
-var player_detected = false;
-var active_range = (state == "patrol") ? detection_range : chase_range;
-var active_angle = (state == "patrol") ? detection_angle : chase_angle;
-if (instance_exists(player)) {
-    var dist = point_distance(x, y, player.x, player.y);
-    var dir_to_player = point_direction(x, y, player.x, player.y);
-    var angle_diff = abs(angle_difference(facing_direction, dir_to_player));
-    if (dist <= active_range && angle_diff <= active_angle / 2) {
-        player_detected = true;
-        last_player_x = player.x;
-        last_player_y = player.y;
-        with (obj_manager) {
-            enemies_alerted = true;
-            alert_timer = 10 * game_get_speed(gamespeed_fps);
-            show_debug_message("Enemy " + other.point_owner + " detected player - all enemies alerted!");
+// Variable Definitions:
+// - point_owner (string): Identifier for nav points.
+// - patrol_speed (real): Speed at which the enemy moves between points, overridable by children.
+// - current_point (real): Current nav point index.
+
+// Player detection
+var player_spotted = false;
+if (instance_exists(obj_player)) {
+    var player_dist = point_distance(x, y, obj_player.x, obj_player.y);
+    var player_dir = point_direction(x, y, obj_player.x, obj_player.y);
+    var angle_diff = abs(angle_difference(facing_direction, player_dir));
+    if (player_dist <= detection_range && angle_diff <= detection_angle / 2) {
+        var los_clear = !collision_line(x, y, obj_player.x, obj_player.y, obj_collision_parent, true, true);
+        if (los_clear) {
+            player_spotted = true;
+            if (state != "alert") {
+                state = "alert";
+                with (obj_manager) {
+                    enemies_alerted = true;
+                    global.alert_timer = 10 * game_get_speed(gamespeed_fps); // Match camera’s reset
+                }
+                alert_icon_timer = 60;    // Show alert icon for 1 sec
+                alert_icon_scale = 1.5;
+                alert_icon_alpha = 1;
+                show_debug_message(point_owner + " triggered alert!");
+            }
+            last_player_x = obj_player.x;
+            last_player_y = obj_player.y;
         }
     }
 }
 
-// Update alert icon animation
-if (alert_icon_timer > 0) {
-    alert_icon_timer--;
-    var progress = 1 - (alert_icon_timer / alert_icon_duration); // 0 to 1 over duration
-    if (progress < 0.2) {
-        // 0 to 0.2s: Quick scale up to 1.5
-        alert_icon_scale = (progress / 0.2) * 1.5; // 0 to 1.5
-        alert_icon_alpha = 1;
-    } else if (progress < 0.4) {
-        // 0.2s to 0.4s: Scale down to 1
-        alert_icon_scale = 1.5 - (((progress - 0.2) / 0.2) * 0.5); // 1.5 to 1
-        alert_icon_alpha = 1;
-    } else {
-        // 0.4s to 1s: Fade out
-        alert_icon_scale = 1;
-        alert_icon_alpha = 1 - ((progress - 0.4) / 0.6); // 1 to 0 over 0.6s
-    }
-}
-
+// State machine
 switch (state) {
     case "patrol":
-        if (player_detected || obj_manager.enemies_alerted) {
-            state = "detected";
-            stored_target = current_target;
-            stored_index = patrol_index;
-            // Trigger alert icon
-            alert_icon_timer = alert_icon_duration;
-            alert_icon_scale = 0;
+        // Move between nav points or join alert
+        if (instance_exists(obj_manager) && obj_manager.enemies_alerted) {
+            state = "alert";
+            alert_icon_timer = 60;    // Show alert icon when alerted by camera or others
+            alert_icon_scale = 1.5;
             alert_icon_alpha = 1;
-            if (instance_exists(player)) {
-                if (mp_grid_path(grid, path, x, y, player.x, player.y, true)) {
-                    path_point_index = 1;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
-                } else {
-                    path_x = player.x;
-                    path_y = player.y;
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    show_debug_message("Initial chase path failed for " + point_owner);
-                }
+            show_debug_message(point_owner + " joining alert from camera or enemy");
+        } else if (array_length(patrol_points) > 0) {
+            // Check if reached current nav point or path ended
+            if (point_distance(x, y, target_x, target_y) <= patrol_speed || path_position >= 1) {
+                current_point = (current_point + 1) % array_length(patrol_points);
+                target_x = patrol_points[current_point].x;
+                target_y = patrol_points[current_point].y;
+                show_debug_message(point_owner + " moving to nav point " + string(current_point) + ": [" + string(target_x) + "," + string(target_y) + "]");
             }
-        } else {
-            var dir = point_direction(x, y, path_x, path_y);
-            var move_x = lengthdir_x(move_speed, dir);
-            var move_y = lengthdir_y(move_speed, dir);
-            var old_x = x;
-            var old_y = y;
-            x += move_x;
-            y += move_y;
-            var is_moving = point_distance(old_x, old_y, x, y) > move_speed / 2;
-            if (is_moving) {
-                target_direction = dir;
-                facing_direction = angle_lerp(facing_direction, target_direction, 0.15);
-                image_xscale = (move_x < 0) ? -1 : 1;
-                image_angle = 0;
-            }
-
-            if (point_distance(x, y, path_x, path_y) < move_speed) {
-                var point_count = path_get_number(path);
-                if (point_count > path_point_index + 1) {
-                    path_point_index++;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
-                } else if (point_distance(x, y, current_target.x, current_target.y) < move_speed) {
-                    x = current_target.x;
-                    y = current_target.y;
-                    if (array_length(patrol_points) > 0) {
-                        patrol_index = (patrol_index + 1) % array_length(patrol_points);
-                        current_target = patrol_points[patrol_index];
-                        if (mp_grid_path(grid, path, x, y, current_target.x, current_target.y, true)) {
-                            path_point_index = 1;
-                            path_x = path_get_point_x(path, path_point_index);
-                            path_y = path_get_point_y(path, path_point_index);
-                            target_direction = point_direction(x, y, path_x, path_y);
-                            image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                            image_angle = 0;
-                        } else {
-                            path_x = x;
-                            path_y = y;
-                            show_debug_message("Path to nav point failed for " + point_owner);
-                        }
-                    }
-                }
+            if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+                path_start(path, patrol_speed, path_action_stop, false);
+                var target_dir = point_direction(x, y, target_x, target_y);
+                facing_direction = angle_lerp(facing_direction, target_dir, 0.2);
+            } else {
+                path_end();
+                show_debug_message(point_owner + " patrol path blocked");
             }
         }
         break;
 
-    case "detected":
-        if (player_detected || obj_manager.enemies_alerted) {
-            chase_recalc_timer--;
-            if (chase_recalc_timer <= 0) {
-                if (instance_exists(player)) {
-                    if (mp_grid_path(grid, path, x, y, player.x, player.y, true)) {
-                        path_point_index = 1;
-                        path_x = path_get_point_x(path, path_point_index);
-                        path_y = path_get_point_y(path, path_point_index);
-                        target_direction = point_direction(x, y, path_x, path_y);
-                        image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                        image_angle = 0;
-                    } else {
-                        path_x = player.x;
-                        path_y = player.y;
-                        target_direction = point_direction(x, y, path_x, path_y);
-                        show_debug_message("Chase recalc path failed for " + point_owner);
+    case "alert":
+        // Chase player with dynamic pathfinding
+        if (instance_exists(obj_player)) {
+            var chase_x = obj_player.x;
+            var chase_y = obj_player.y;
+            
+            var cell_x = chase_x div 32;
+            var cell_y = chase_y div 32;
+            if (mp_grid_get_cell(grid, cell_x, cell_y) == -1) {
+                var found = false;
+                for (var radius = 1; radius <= 3 && !found; radius++) {
+                    for (var i = -radius; i <= radius && !found; i++) {
+                        for (var j = -radius; j <= radius && !found; j++) {
+                            var test_x = (cell_x + i) * 32 + 16;
+                            var test_y = (cell_y + j) * 32 + 16;
+                            if (mp_grid_get_cell(grid, cell_x + i, cell_y + j) == 0 && mp_grid_path(grid, path, x, y, test_x, test_y, true)) {
+                                chase_x = test_x;
+                                chase_y = test_y;
+                                found = true;
+                            }
+                        }
                     }
                 }
-                chase_recalc_timer = game_get_speed(gamespeed_fps) / 2;
-            }
-            var dir = point_direction(x, y, path_x, path_y);
-            var move_x = lengthdir_x(move_speed, dir);
-            var move_y = lengthdir_y(move_speed, dir);
-            var old_x = x;
-            var old_y = y;
-            x += move_x;
-            y += move_y;
-            var is_moving = point_distance(old_x, old_y, x, y) > move_speed / 2;
-            if (is_moving) {
-                target_direction = dir;
-                facing_direction = angle_lerp(facing_direction, target_direction, 0.15);
-                image_xscale = (move_x < 0) ? -1 : 1;
-                image_angle = 0;
-            }
-            if (point_distance(x, y, path_x, path_y) < move_speed) {
-                if (path_get_number(path) > path_point_index + 1) {
-                    path_point_index++;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
+                if (found) {
+                    show_debug_message(point_owner + " adjusted target to open spot: [" + string(chase_x) + "," + string(chase_y) + "]");
+                } else {
+                    chase_x = x;
+                    chase_y = y;
+                    show_debug_message(point_owner + " no open spot near player, holding position");
                 }
             }
-        } else {
-            state = "search";
-            search_timer = 10 * game_get_speed(gamespeed_fps);
-            search_wander_timer = 0;
-            arrived_at_last = false;
-            if (instance_exists(player)) {
-                last_player_x = player.x;
-                last_player_y = player.y;
-            }
-            path_clear_points(path);
-            if (mp_grid_path(grid, path, x, y, last_player_x, last_player_y, true)) {
-                path_point_index = 1;
-                path_x = path_get_point_x(path, path_point_index);
-                path_y = path_get_point_y(path, path_point_index);
-                target_direction = point_direction(x, y, path_x, path_y);
-                image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                image_angle = 0;
-                show_debug_message(point_owner + " entering search - heading to last player pos: (" + string(last_player_x) + ", " + string(last_player_y) + ")");
+
+            target_x = chase_x;
+            target_y = chase_y;
+            if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+                path_start(path, patrol_speed * 1.2, path_action_stop, false);
+                var player_dir = point_direction(x, y, obj_player.x, obj_player.y);
+                facing_direction = angle_lerp(facing_direction, player_dir, 0.1);
+                show_debug_message(point_owner + " chasing player at [" + string(target_x) + "," + string(target_y) + "]");
             } else {
-                path_x = last_player_x;
-                path_y = last_player_y;
-                target_direction = point_direction(x, y, path_x, path_y);
-                image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                image_angle = 0;
-                show_debug_message("Path to last known position failed for " + point_owner + " - direct move to (" + string(last_player_x) + ", " + string(last_player_y) + ")");
+                path_end();
+                show_debug_message(point_owner + " path to target blocked, waiting");
             }
+        }
+        // Transition to search when alert timer ends
+        if (instance_exists(obj_manager) && !obj_manager.enemies_alerted) {
+            state = "search";
+            search_timer = search_timer_max;
+            path_end();
+            if (instance_exists(obj_player)) {
+                last_player_x = obj_player.x;
+                last_player_y = obj_player.y;
+            }
+            target_x = last_player_x;
+            target_y = last_player_y;
+            show_debug_message(point_owner + " entering search phase, heading to last known position: [" + string(target_x) + "," + string(target_y) + "]");
         }
         break;
 
     case "search":
-        if (player_detected || obj_manager.enemies_alerted) {
-            state = "detected";
-            alert_icon_timer = alert_icon_duration;
-            alert_icon_scale = 0;
-            alert_icon_alpha = 1;
-            if (instance_exists(player)) {
-                if (mp_grid_path(grid, path, x, y, player.x, player.y, true)) {
-                    path_point_index = 1;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
-                } else {
-                    path_x = player.x;
-                    path_y = player.y;
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    show_debug_message("Search chase path failed for " + point_owner);
-                }
+        // Move to target with pathfinding
+        if (point_distance(x, y, target_x, target_y) <= patrol_speed || path_position >= 1) {
+            path_end(); // Clean up path before picking new target
+            // Pick a random navigable spot
+            var attempts = 0;
+            do {
+                target_x = irandom(room_width div 32) * 32;
+                target_y = irandom(room_height div 32) * 32;
+                attempts++;
+            } until (mp_grid_path(grid, path, x, y, target_x, target_y, true) || attempts > 10);
+            if (attempts > 10) {
+                target_x = x;
+                target_y = y;
+                show_debug_message(point_owner + " couldn’t find a searchable spot");
+            } else {
+                show_debug_message(point_owner + " searching at [" + string(target_x) + "," + string(target_y) + "]");
             }
+        } else if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+            path_start(path, patrol_speed, path_action_stop, false);
+            var next_x = path_get_x(path, path_position + 0.01);
+            var next_y = path_get_y(path, path_position + 0.01);
+            var move_dir = point_direction(x, y, next_x, next_y);
+            facing_direction = angle_lerp(facing_direction, move_dir, 0.03);
+            show_debug_message(point_owner + " moving to search target: [" + string(target_x) + "," + string(target_y) + "]");
         } else {
-            if (!arrived_at_last || point_distance(x, y, path_x, path_y) >= move_speed) {
-                var dir = point_direction(x, y, path_x, path_y);
-                var move_x = lengthdir_x(move_speed, dir);
-                var move_y = lengthdir_y(move_speed, dir);
-                x += move_x;
-                y += move_y;
-                target_direction = dir;
-                facing_direction = angle_lerp(facing_direction, target_direction, 0.15);
-                image_xscale = (move_x < 0) ? -1 : 1;
-                image_angle = 0;
-            }
-
-            show_debug_message("Search State - " + point_owner + " | Pos: (" + string(x) + ", " + string(y) + ") | Path: (" + string(path_x) + ", " + string(path_y) + ") | Last Player: (" + string(last_player_x) + ", " + string(last_player_y) + ") | Target Dir: " + string(target_direction) + " | Facing Dir: " + string(facing_direction) + " | Moving: " + string(point_distance(x, y, path_x, path_y) >= move_speed) + " | Wander Timer: " + string(search_wander_timer) + " | Arrived: " + string(arrived_at_last));
-
-            if (point_distance(x, y, path_x, path_y) < move_speed) {
-                x = path_x;
-                y = path_y;
-                if (path_get_number(path) > path_point_index + 1) {
-                    path_point_index++;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
-                } else if (!arrived_at_last && point_distance(x, y, last_player_x, last_player_y) < move_speed) {
-                    arrived_at_last = true;
-                    show_debug_message(point_owner + " arrived at last player pos: (" + string(last_player_x) + ", " + string(last_player_y) + ")");
+            path_end();
+            show_debug_message(point_owner + " search path blocked, picking new spot");
+            target_x = x;
+            target_y = y;
+        }
+        // Countdown search timer
+        search_timer--;
+        if (search_timer <= 0 && !player_spotted) {
+            state = "patrol";
+            path_end();
+            if (array_length(patrol_points) > 0) {
+                target_x = patrol_points[current_point].x;
+                target_y = patrol_points[current_point].y;
+                if (!mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+                    target_x = x;
+                    target_y = y;
+                    show_debug_message("Return path blocked for " + point_owner);
                 }
             }
-
-            if (arrived_at_last && search_wander_timer > 0) {
-                search_wander_timer--;
-            } else if (arrived_at_last) {
-                var wander_x = last_player_x + irandom_range(-50, 50);
-                var wander_y = last_player_y + irandom_range(-50, 50);
-                path_clear_points(path);
-                if (mp_grid_path(grid, path, x, y, wander_x, wander_y, true)) {
-                    path_point_index = 1;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
-                    show_debug_message(point_owner + " wandering to new pos: (" + string(wander_x) + ", " + string(wander_y) + ")");
-                } else {
-                    path_x = x;
-                    path_y = y;
-                    show_debug_message("Wander path failed for " + point_owner);
-                }
-                search_wander_timer = game_get_speed(gamespeed_fps) * 2;
-            }
-
-            search_timer--;
-            if (search_timer <= 0) {
-                state = "patrol";
-                current_target = stored_target;
-                patrol_index = stored_index;
-                if (mp_grid_path(grid, path, x, y, current_target.x, current_target.y, true)) {
-                    path_point_index = 1;
-                    path_x = path_get_point_x(path, path_point_index);
-                    path_y = path_get_point_y(path, path_point_index);
-                    target_direction = point_direction(x, y, path_x, path_y);
-                    image_xscale = (lengthdir_x(move_speed, target_direction) < 0) ? -1 : 1;
-                    image_angle = 0;
-                } else {
-                    path_x = x;
-                    path_y = y;
-                    show_debug_message("Return path failed for " + point_owner);
-                }
-            }
+            show_debug_message(point_owner + " returning to patrol");
         }
         break;
+}
+
+// Update alert icon
+if (alert_icon_timer > 0) {
+    alert_icon_timer--;
+    alert_icon_scale = max(1, alert_icon_scale - 0.02);
+    alert_icon_alpha = max(0, alert_icon_alpha - 0.016);
 }

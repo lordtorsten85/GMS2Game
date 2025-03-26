@@ -1,52 +1,39 @@
-// Object: obj_enemy_parent
-// Event: Create
-// Description: Initializes enemy variables, patrol system, pathfinding, and detection setup.
+// obj_enemy_parent - Create Event
+// Initializes the patrol system, motion planning, state machine, and detection cone.
 
-// Variable Definitions (set in object editor):
-// - point_owner (string): Unique identifier matching nav points to this enemy.
+// Variable Definitions:
+// - point_owner (string): Identifier to match nav points to this enemy.
+// - patrol_speed (real): Speed at which the enemy moves between points, overridable by children.
+// - current_point (real): Current index in the patrol_points array.
 
-if (!variable_instance_exists(id, "point_owner")) point_owner = ""; // Default to empty string if not set
-move_speed = 1.4;          // Speed of movement, 30% slower than 2 (override in child if needed)
-patrol_points = [];        // Array to store nav point instances
-current_target = noone;    // Current nav point instance being targeted
-patrol_index = 0;          // Current index in patrol_points array
-path = path_add();         // Create a path for motion planning
-grid = noone;              // Will hold the mp_grid, set in Room Start
-path_x = x;                // Current target x along path
-path_y = y;                // Current target y along path
-path_point_index = 1;      // Tracks current point on the path
+// Protect variable definitions
+if (!variable_instance_exists(id, "point_owner")) point_owner = "default";
+if (!variable_instance_exists(id, "patrol_speed")) patrol_speed = 2;
+if (!variable_instance_exists(id, "current_point")) current_point = 0;
 
-// Detection variables
-detection_range = 150;     // Base distance of detection cone (patrol)
-detection_angle = 60;      // Base total angle of cone (patrol)
-chase_range = 200;         // Larger range during chase and search
-chase_angle = 90;          // Larger angle during chase and search
-facing_direction = 0;      // Current direction enemy is facing
-target_direction = 0;      // Direction enemy is moving towards
-state = "patrol";          // "patrol", "detected", "search"
-search_timer = 0;          // Timer for search state
-chase_recalc_timer = 0;    // Timer to recalc path during chase
+// Initialize patrol and movement variables
+patrol_points = [];          // Array of nav point instances
+target_x = x;                // Current target X to move toward
+target_y = y;                // Current target Y to move toward
+path = path_add();           // Path for motion planning
+grid = noone;                // Motion planning grid (set in Room Start)
+last_player_x = x;           // Last known player X position
+last_player_y = y;           // Last known player Y position
 
-// Search variables
-last_player_x = 0;         // Last known player X position
-last_player_y = 0;         // Last known player Y position
-search_wander_timer = 0;   // Timer to pick new wander point and look direction
-search_look_angle = 0;     // Angle to look at during search
-arrived_at_last = false;   // Tracks if enemy reached last known position
+// State machine
+state = "patrol";            // States: "patrol", "alert", "search"
+search_timer = 0;            // Timer for search state (in steps)
+search_timer_max = 600;      // 10 sec at 60 FPS for search phase
 
-// Animation
-image_speed = 0.2;         // Set to your preferred 0.2
+// Detection cone variables
+detection_range = 150;       // Range for detection
+detection_angle = 90;        // Angle of detection cone
+facing_direction = 0;        // Direction enemy is facing (degrees)
 
-// Chase variables
-stored_target = noone;     // Stores next nav point when chasing
-stored_index = 0;          // Stores patrol_index for resuming
+// Alert icon variables
+alert_icon_timer = 0;        // Frames to show alert icon
+alert_icon_scale = 1;        // Scale of alert sprite
+alert_icon_alpha = 1;        // Alpha of alert sprite
 
-// Add to existing Create event
-alert_icon_timer = 0; // Tracks animation duration (in steps)
-alert_icon_scale = 0; // Scale for pop-up animation
-alert_icon_alpha = 0; // Alpha for fade-out
-alert_icon_duration = game_get_speed(gamespeed_fps); // 1 second (e.g., 60 steps at 60 FPS)
-
-// Health
-max_hp = 50; // Maximum health
-hp = max_hp; // Current health
+// Enemy Properties
+if (!variable_instance_exists(id, "hp")) hp = 50; // Protect HP like patrol_speed

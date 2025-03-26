@@ -15,11 +15,3 @@ if (instance_exists(obj_manager)) {
     ammo_current = obj_manager.ammo_current;
     ammo_max = obj_manager.ammo_max;
 }
-
-// Check enemy states for search timer
-search_timer_max = 0;
-with (obj_enemy_parent) {
-    if (state == "search" && search_timer > other.search_timer_max) {
-        other.search_timer_max = search_timer;
-    }
-}

@@ -1,15 +1,15 @@
 // obj_manager - Create Event
 // Description: Initializes global manager for pause state, health, ammo, inventory, and enemy alert systems
 // Variable Definitions (set in object editor): None (persistent instance, declared here)
-// - pause - boolean - Indicates if the game is paused
-// - pause_seq - asset - Sequence for pause screen
-// - health_max - real - Maximum player health (e.g., 100)
-// - health_current - real - Current player health (e.g., 100)
-// - ammo_counts - asset (ds_map) - Map of ammo types and counts (e.g., "small_gun" -> 30)
-// - ammo_current - real - Current ammo for equipped weapon
-// - ammo_max - real - Maximum ammo for equipped weapon
-// - enemies_alerted - boolean - Global alert state for all enemies
-// - alert_timer - real - Time (in steps) enemies stay alerted after losing player sight
+// - pause (boolean): Indicates if the game is paused
+// - pause_seq (asset): Sequence for pause screen
+// - health_max (real): Maximum player health (e.g., 100)
+// - health_current (real): Current player health (e.g., 100)
+// - ammo_counts (asset - ds_map): Map of ammo types and counts (e.g., "small_gun" -> 30)
+// - ammo_current (real): Current ammo for equipped weapon
+// - ammo_max (real): Maximum ammo for equipped weapon
+// - enemies_alerted (boolean): Global alert state for all enemies
+// Note: global.alert_timer is managed globally, initialized here
 
 global.backpack = instance_create_layer(0, 0, "GUI", obj_inventory, 
     {
@@ -63,7 +63,7 @@ global.equipment_slots = instance_create_layer(0, 0, "GUI", obj_equipment_slots,
     }
 );
 
-depth = -12510; // Lower depth means it draws later, on top
+depth = -12610; // Lower depth means it draws later, on top
 global.dragging_inventory = -1;
 
 pause = false;
@@ -78,10 +78,14 @@ ammo_max = 0;     // Initialize max ammo
 
 // Enemy alert system
 enemies_alerted = false;
-alert_timer = 0; // Will count down after player is lost
+global.alert_timer = 0; // Initialized here, managed in Step event
+global.search_timer = 0; // Search phase timer, tracks longest active search
 
 // Create HUD instance
 global.hud = instance_create_layer(0, 0, "GUI", obj_hud);
 
 // Initialize global.equipment array to track equipped item IDs
 global.equipment = array_create(2, -1); // 2 slots: [0] for utility, [1] for weapon, -1 means empty
+
+// Initialize global.current_room_tag to store the current room the player is in
+global.current_room_tag = "none";

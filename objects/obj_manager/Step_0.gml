@@ -1,13 +1,13 @@
 // obj_manager - Step Event
-// Description: Manages global input, dragging, inventory closure, and updates ammo based on equipment
+// Description: Manages global input, dragging, inventory closure, ammo updates, and enemy alert timer.
 // Variable Definitions (set in Create event):
-// - pause - boolean - Indicates if the game is paused
-// - pause_seq - asset - Sequence for pause screen
-// - health_max - real - Maximum player health
-// - health_current - real - Current player health
-// - ammo_counts - asset (ds_map) - Map of ammo types and counts
-// - ammo_current - real - Current ammo for equipped weapon
-// - ammo_max - real - Maximum ammo for equipped weapon
+// - pause (boolean): Indicates if the game is paused
+// - pause_seq (asset): Sequence for pause screen
+// - health_max (real): Maximum player health
+// - health_current (real): Current player health
+// - ammo_counts (asset - ds_map): Map of ammo types and counts
+// - ammo_current (real): Current ammo for equipped weapon
+// - ammo_max (real): Maximum ammo for equipped weapon
 
 if (global.mouse_input_delay > 0) {
     global.mouse_input_delay--;
@@ -113,7 +113,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 dragging_inv.inventory[# target_x, target_y] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
                     for (var w = 0; w < item_width; w++) {
-                        for (var h = 0; h <item_height; h++) {
+                        for (var h = 0; h < item_height; h++) {
                             if (w != 0 || h != 0) {
                                 dragging_inv.inventory[# target_x + w, target_y + h] = [item_id, placement_id, qty, contained_items];
                             }
@@ -232,7 +232,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
 
                     if (can_drop) {
                         inventory[# drop_x, drop_y] = [item_id, placement_id, qty, contained_items];
-						global.equipment[drop_x] = item_id; // Sync global.equipment with the dropped item
+                        global.equipment[drop_x] = item_id; // Sync global.equipment with the dropped item
                         if (inventory_type != "equipment_slots") {
                             for (var w = 0; w < item_width; w++) {
                                 for (var h = 0; h < item_height; h++) {
@@ -416,11 +416,38 @@ if (instance_exists(global.equipment_slots)) {
     }
 }
 
-// obj_manager - Step Event
-if (enemies_alerted && alert_timer > 0) {
-    alert_timer--;
-    if (alert_timer <= 0) {
-        enemies_alerted = false;
-        show_debug_message("Enemy alert state reset - all enemies back to patrol");
+// Handle enemy alert timer
+if (enemies_alerted && global.alert_timer > 0) {
+    // Check if any enemy still sees the player
+    var player_spotted = false;
+    with (obj_enemy_parent) {
+        if (state == "alert" && point_distance(x, y, obj_player.x, obj_player.y) <= detection_range) {
+            var player_dir = point_direction(x, y, obj_player.x, obj_player.y);
+            var angle_diff = abs(angle_difference(facing_direction, player_dir));
+            if (angle_diff <= detection_angle / 2 && !collision_line(x, y, obj_player.x, obj_player.y, obj_collision_parent, true, true)) {
+                player_spotted = true;
+                break;
+            }
+        }
+    }
+    if (player_spotted) {
+        global.alert_timer = 600; // Reset to 10 sec if player is spotted
+        show_debug_message("Alert timer reset - player still spotted");
+    } else {
+        global.alert_timer--;
+        if (global.alert_timer <= 0) {
+            enemies_alerted = false;
+            show_debug_message("Enemy alert state reset - all enemies now searching");
+        }
+    }
+}
+
+// Handle search timer when alert is off
+if (!enemies_alerted) {
+    global.search_timer = 0; // Reset unless an enemy is searching
+    with (obj_enemy_parent) {
+        if (state == "search" && search_timer > global.search_timer) {
+            global.search_timer = search_timer; // Take the longest active search
+        }
     }
 }

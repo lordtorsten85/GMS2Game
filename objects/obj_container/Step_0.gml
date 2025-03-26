@@ -35,7 +35,7 @@ if (instance_exists(obj_player)) {
             x = xprevious;
             y = yprevious;
         }
-        show_debug_message("Player blocked by " + inventory_type + " at [" + string(x) + "," + string(y) + "]");
+       // show_debug_message("Player blocked by " + inventory_type + " at [" + string(x) + "," + string(y) + "]");
     }
 }
 
