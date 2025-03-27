@@ -22,7 +22,7 @@ switch (state) {
             if (player_detected && alert_cooldown <= 0) {
                 with (obj_manager) {
                     enemies_alerted = true;
-                    global.alert_timer = 10 * game_get_speed(gamespeed_fps); // Use global.alert_timer
+                    global.alert_timer = 10 * game_get_speed(gamespeed_fps);
                     show_debug_message("Camera detected player - all enemies alerted!");
                 }
                 alert_cooldown = alert_cooldown_duration;
@@ -44,7 +44,7 @@ switch (state) {
             if (player_detected && alert_cooldown <= 0) {
                 with (obj_manager) {
                     enemies_alerted = true;
-                    global.alert_timer = 10 * game_get_speed(gamespeed_fps); // Use global.alert_timer
+                    global.alert_timer = 10 * game_get_speed(gamespeed_fps);
                     show_debug_message("Camera re-detected player - all enemies alerted!");
                 }
                 alert_cooldown = alert_cooldown_duration;
@@ -60,9 +60,15 @@ switch (state) {
 }
 
 // Update facing direction based on state
+var adjusted_base = base_direction + (face_left ? 180 : 0); // Flip base direction if face_left
 if (state == "detected" && instance_exists(player)) {
-    // Lock onto player in detected state
-    facing_direction = point_direction(x, y, player.x, player.y);
+    // Clamp to normal scan range in detected state using angle_difference
+    var dir_to_player = point_direction(x, y, player.x, player.y);
+    var diff = angle_difference(dir_to_player, adjusted_base);
+    var clamped_diff = clamp(diff, -detection_angle / 2, detection_angle / 2);
+    facing_direction = adjusted_base + clamped_diff;
+    // Debug clamp behavior
+    // show_debug_message("Dir to player: " + string(dir_to_player) + " Adjusted base: " + string(adjusted_base) + " Facing: " + string(facing_direction));
 } else {
     // Scanning logic for patrol and search states
     if (pause_timer > 0) {
@@ -80,7 +86,7 @@ if (state == "detected" && instance_exists(player)) {
             pause_timer = pause_duration;
         }
     }
-    facing_direction = base_direction + scan_angle;
+    facing_direction = adjusted_base + scan_angle;
 }
 
 // Update cooldown

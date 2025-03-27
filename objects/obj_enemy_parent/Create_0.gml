@@ -23,7 +23,8 @@ last_player_y = y;           // Last known player Y position
 // State machine
 state = "patrol";            // States: "patrol", "alert", "search"
 search_timer = 0;            // Timer for search state (in steps)
-search_timer_max = 600;      // 10 sec at 60 FPS for search phase
+search_timer_max = 1200;     // 20 sec at 60 FPS for search phase
+search_pause_timer = 0;      // Pause timer for "looking around" in search
 
 // Detection cone variables
 detection_range = 150;       // Range for detection
@@ -36,4 +37,4 @@ alert_icon_scale = 1;        // Scale of alert sprite
 alert_icon_alpha = 1;        // Alpha of alert sprite
 
 // Enemy Properties
-if (!variable_instance_exists(id, "hp")) hp = 50; // Protect HP like patrol_speed
+if (!variable_instance_exists(id, "hp")) hp = 50;

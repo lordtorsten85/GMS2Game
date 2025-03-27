@@ -20,7 +20,7 @@ if (instance_exists(obj_player)) {
                 state = "alert";
                 with (obj_manager) {
                     enemies_alerted = true;
-                    global.alert_timer = 10 * game_get_speed(gamespeed_fps); // Match camera’s reset
+                    global.alert_timer = 10 * game_get_speed(gamespeed_fps);
                 }
                 alert_icon_timer = 60;    // Show alert icon for 1 sec
                 alert_icon_scale = 1.5;
@@ -112,7 +112,7 @@ switch (state) {
             search_timer = search_timer_max;
             path_end();
             if (instance_exists(obj_player)) {
-                last_player_x = obj_player.x;
+                last_player_x = obj_player.x; // Update last position when alert ends
                 last_player_y = obj_player.y;
             }
             target_x = last_player_x;
@@ -122,22 +122,32 @@ switch (state) {
         break;
 
     case "search":
-        // Move to target with pathfinding
-        if (point_distance(x, y, target_x, target_y) <= patrol_speed || path_position >= 1) {
-            path_end(); // Clean up path before picking new target
-            // Pick a random navigable spot
-            var attempts = 0;
-            do {
-                target_x = irandom(room_width div 32) * 32;
-                target_y = irandom(room_height div 32) * 32;
-                attempts++;
-            } until (mp_grid_path(grid, path, x, y, target_x, target_y, true) || attempts > 10);
-            if (attempts > 10) {
-                target_x = x;
-                target_y = y;
-                show_debug_message(point_owner + " couldn’t find a searchable spot");
+        // Move to target with pathfinding, pause, and pick new spots near last known position
+        if (path_position >= 1 || point_distance(x, y, target_x, target_y) <= patrol_speed * 2) { // Wider reach check
+            path_end();
+            if (search_pause_timer > 0) {
+                search_pause_timer--; // Pause to "look around"
             } else {
-                show_debug_message(point_owner + " searching at [" + string(target_x) + "," + string(target_y) + "]");
+                // Pick a random spot within 256px of last_player_x/y
+                var attempts = 0;
+                do {
+                    var angle = irandom(360);
+                    var dist = irandom_range(32, 256); // Within 256px radius
+                    target_x = last_player_x + lengthdir_x(dist, angle);
+                    target_y = last_player_y + lengthdir_y(dist, angle);
+                    // Snap to grid
+                    target_x = round(target_x / 32) * 32;
+                    target_y = round(target_y / 32) * 32;
+                    attempts++;
+                } until (mp_grid_path(grid, path, x, y, target_x, target_y, true) || attempts > 10);
+                if (attempts > 10) {
+                    target_x = x;
+                    target_y = y;
+                    show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
+                } else {
+                    show_debug_message(point_owner + " searching near last position at: [" + string(target_x) + "," + string(target_y) + "]");
+                }
+                search_pause_timer = 180; // 3 sec pause
             }
         } else if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
             path_start(path, patrol_speed, path_action_stop, false);
@@ -151,6 +161,7 @@ switch (state) {
             show_debug_message(point_owner + " search path blocked, picking new spot");
             target_x = x;
             target_y = y;
+            search_pause_timer = 0; // Reset pause to try again
         }
         // Countdown search timer
         search_timer--;
