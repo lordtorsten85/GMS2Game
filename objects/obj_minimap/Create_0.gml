@@ -23,3 +23,8 @@ obj_minimap_id = id;
 if (!variable_global_exists("revealed_rooms")) {
     global.revealed_rooms = ds_map_create();
 }
+
+// Toggle for showing all enemies
+if (!variable_global_exists("show_all_enemies")) {
+    global.show_all_enemies = false; // Default: only same-area enemies
+}
