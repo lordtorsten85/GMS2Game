@@ -15,19 +15,24 @@ function inventory_add_item(inventory_instance, item_id, qty, respect_max_stack,
     var max_stack = global.item_data[item_id][7];
     var contained = (contained_items != undefined && is_array(contained_items)) ? contained_items : [];
 
+    var rounds_per_magazine = ds_map_exists(global.ammo_to_weapon, item_id) ? global.ammo_to_weapon[? item_id][2] : 1;
+    var max_rounds = max_stack * rounds_per_magazine; // e.g., 10 * 10 = 100 for Small Gun Ammo
+
+    show_debug_message("Adding " + string(qty) + " rounds of " + global.item_data[item_id][0] + " with max_rounds " + string(max_rounds));
+
     if (is_stackable && respect_max_stack) {
         for (var i = 0; i < inventory_instance.grid_width; i++) {
             for (var j = 0; j < inventory_instance.grid_height; j++) {
                 var slot = inventory_instance.inventory[# i, j];
                 if (slot != -1 && is_array(slot) && slot[0] == item_id) {
                     var current_qty = slot[2];
-                    if (current_qty < max_stack) {
-                        var space_left = max_stack - current_qty;
+                    if (current_qty < max_rounds) {
+                        var space_left = max_rounds - current_qty;
                         var qty_to_add = min(qty, space_left);
                         slot[2] = current_qty + qty_to_add;
                         inventory_instance.inventory[# i, j] = slot;
                         qty -= qty_to_add;
-                        show_debug_message("Merged " + string(qty_to_add) + " " + global.item_data[item_id][0] + " at [" + string(i) + "," + string(j) + "]");
+                        show_debug_message("Merged " + string(qty_to_add) + " rounds of " + global.item_data[item_id][0] + " at [" + string(i) + "," + string(j) + "]");
                         if (qty <= 0) return true;
                     }
                 }

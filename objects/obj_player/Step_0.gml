@@ -1,6 +1,4 @@
 // obj_player - Step Event
-// Description: Handles player movement, inventory interactions, item pickup with mod inventory restoration, and weapon firing
-
 var pickup_range = 48;
 
 // Movement with arrow keys and WASD
@@ -8,13 +6,11 @@ var h_input = (keyboard_check(vk_right) || keyboard_check(ord("D"))) - (keyboard
 var v_input = (keyboard_check(vk_down) || keyboard_check(ord("S"))) - (keyboard_check(vk_up) || keyboard_check(ord("W")));
 
 if (h_input != 0 || v_input != 0) {
-    // Calculate direction and move
     var dir = point_direction(0, 0, h_input, v_input);
     input_direction = dir;
     x += lengthdir_x(move_speed, dir);
     y += lengthdir_y(move_speed, dir);
 
-    // Update sprite based on direction
     if (input_direction == 0) { // Right
         sprite_index = spr_player_walk_side;
         image_xscale = 1;
@@ -36,26 +32,72 @@ if (h_input != 0 || v_input != 0) {
     sprite_index = spr_player_idle;
 }
 
-// Animate sprite
 image_index += 0;
 
 // Fire weapon on space bar press
 if (keyboard_check_pressed(vk_space)) {
-    // Check equipped weapon
     if (instance_exists(global.equipment_slots)) {
-        var weapon_slot = global.equipment_slots.inventory[# 1, 0]; // Weapon slot
+        var weapon_slot = global.equipment_slots.inventory[# 1, 0];
         if (is_array(weapon_slot) && weapon_slot[0] != -1 && obj_manager.ammo_current > 0) {
-            // Fire bullet
-            var bullet = instance_create_layer(x, y, "Instances", obj_bullet);
-            bullet.direction = input_direction;
-            bullet.image_angle = input_direction;
-            bullet.creator = id; // Optional: track who fired the bullet
-            obj_manager.ammo_current -= 1; // Deduct ammo
+            var weapon_id = weapon_slot[0];
+            var ammo_item_id = -1;
+            var ammo_key = ds_map_find_first(global.ammo_to_weapon);
+            while (!is_undefined(ammo_key)) {
+                var ammo_data = global.ammo_to_weapon[? ammo_key];
+                if (ammo_data[1] == weapon_id) {
+                    ammo_item_id = ammo_key;
+                    break;
+                }
+                ammo_key = ds_map_find_next(global.ammo_to_weapon, ammo_key);
+            }
+
+            if (ammo_item_id != -1) {
+                var ammo_type = global.ammo_to_weapon[? ammo_item_id][0];
+                
+                if (obj_manager.ammo_current > 0) {
+                    obj_manager.ammo_current -= 1;
+                    ds_map_replace(obj_manager.ammo_counts, ammo_type, obj_manager.ammo_current);
+
+                    var smallest_stack = -1;
+                    var smallest_rounds = 9999;
+                    var smallest_i = -1;
+                    var smallest_j = -1;
+                    for (var i = 0; i < ds_grid_width(global.backpack.inventory); i++) {
+                        for (var j = 0; j < ds_grid_height(global.backpack.inventory); j++) {
+                            var slot = global.backpack.inventory[# i, j];
+                            if (is_array(slot) && slot[0] == ammo_item_id && slot[2] > 0 && slot[2] < smallest_rounds) {
+                                smallest_stack = slot;
+                                smallest_rounds = slot[2];
+                                smallest_i = i;
+                                smallest_j = j;
+                            }
+                        }
+                    }
+
+                    if (smallest_stack != -1) {
+                        smallest_stack[2] -= 1;
+                        if (smallest_stack[2] <= 0) {
+                            inventory_remove(smallest_i, smallest_j, global.backpack.inventory);
+                            show_debug_message("Removed empty " + global.item_data[ammo_item_id][0] + " stack at [" + string(smallest_i) + "," + string(smallest_j) + "]");
+                        } else {
+                            global.backpack.inventory[# smallest_i, smallest_j] = smallest_stack;
+                        }
+                    }
+
+                    var bullet = instance_create_layer(x, y, "Instances", obj_bullet);
+                    bullet.direction = input_direction;
+                    bullet.image_angle = input_direction;
+                    bullet.creator = id;
+                    show_debug_message("Fired " + global.item_data[weapon_id][0] + ", rounds left: " + string(obj_manager.ammo_current));
+                } else {
+                    show_debug_message("No ammo left for " + global.item_data[weapon_id][0]);
+                }
+            }
         }
     }
 }
 
-// Existing inventory and pickup logic
+// Inventory and pickup logic
 if (!variable_instance_exists(id, "pickup_cooldown")) pickup_cooldown = 0;
 if (pickup_cooldown > 0) pickup_cooldown--;
 
@@ -80,14 +122,17 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
     with (nearest_item_to_pickup) {
         var my_item_id = item_id;
         if (my_item_id != ITEM.NONE) {
-            var success = inventory_add_item(global.backpack, my_item_id, stack_quantity, true, contained_items);
+            var rounds_per_magazine = ds_map_exists(global.ammo_to_weapon, my_item_id) ? global.ammo_to_weapon[? my_item_id][2] : 1;
+            var rounds_to_add = stack_quantity * rounds_per_magazine; // Dynamic rounds per magazine
+            show_debug_message("Picking up " + global.item_data[my_item_id][0] + ": stack_quantity=" + string(stack_quantity) + ", rounds_to_add=" + string(rounds_to_add));
+            var success = inventory_add_item(global.backpack, my_item_id, rounds_to_add, true, contained_items);
             if (success) {
                 is_in_world = false;
                 var placement_id = -1;
                 for (var i = 0; i < ds_grid_width(global.backpack.inventory); i++) {
                     for (var j = 0; j < ds_grid_height(global.backpack.inventory); j++) {
                         var slot = global.backpack.inventory[# i, j];
-                        if (is_array(slot) && slot[0] == my_item_id && slot[2] == stack_quantity) {
+                        if (is_array(slot) && slot[0] == my_item_id && slot[2] == rounds_to_add) {
                             placement_id = slot[1];
                             break;
                         }
@@ -106,7 +151,7 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
                     }
                     global.mod_inventories[? placement_id] = mod_grid;
                 }
-                show_debug_message("Picked up " + global.item_data[my_item_id][0] + " with quantity " + string(stack_quantity) + " and contained_items: " + string(contained_items));
+                show_debug_message("Picked up " + global.item_data[my_item_id][0] + " with " + string(rounds_to_add) + " rounds");
                 instance_destroy();
                 other.pickup_cooldown = 15;
             } else {

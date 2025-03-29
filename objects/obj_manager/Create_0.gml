@@ -1,16 +1,4 @@
 // obj_manager - Create Event
-// Description: Initializes global manager for pause state, health, ammo, inventory, and enemy alert systems
-// Variable Definitions (set in object editor): None (persistent instance, declared here)
-// - pause (boolean): Indicates if the game is paused
-// - pause_seq (asset): Sequence for pause screen
-// - health_max (real): Maximum player health (e.g., 100)
-// - health_current (real): Current player health (e.g., 100)
-// - ammo_counts (asset - ds_map): Map of ammo types and counts (e.g., "small_gun" -> 30)
-// - ammo_current (real): Current ammo for equipped weapon
-// - ammo_max (real): Maximum ammo for equipped weapon
-// - enemies_alerted (boolean): Global alert state for all enemies
-// Note: global.alert_timer is managed globally, initialized here
-
 global.backpack = instance_create_layer(0, 0, "GUI", obj_inventory, 
     {
         inventory_type: "backpack",
@@ -33,10 +21,9 @@ if (variable_global_exists("item_data") && is_array(global.item_data)) {
     show_debug_message("obj_manager confirms Syringe type: " + string(global.item_data[ITEM.SYRINGE][6]));
 } else {
     show_debug_message("Error: item_data not initialized by obj_manager startup");
-    initialize_item_data(); // Fallback
+    initialize_item_data(); // Fallback, initializes ammo_types too
 }
 
-// Initialize the inventory grid for the backpack
 with (global.backpack) {
     inventory = ds_grid_create(grid_width, grid_height);
     ds_grid_clear(inventory, -1);
@@ -63,29 +50,24 @@ global.equipment_slots = instance_create_layer(0, 0, "GUI", obj_equipment_slots,
     }
 );
 
-depth = -12610; // Lower depth means it draws later, on top
+depth = -12610;
 global.dragging_inventory = -1;
 
 pause = false;
 pause_seq = noone;
 health_max = 100;
 health_current = 100;
+
 ammo_counts = ds_map_create();
-ds_map_add(ammo_counts, "small_gun", 30); // Example: 30 rounds for small gun
-ds_map_add(ammo_counts, "big_gun", 0);   // Example: 0 rounds for big gun
-ammo_current = 0; // Initialize ammo
-ammo_max = 0;     // Initialize max ammo
+ds_map_add(ammo_counts, "small_gun", 0); // Must be 0
+ds_map_add(ammo_counts, "big_gun", 0);
+ammo_current = 0;
+ammo_max = 0; // Not used
 
-// Enemy alert system
 enemies_alerted = false;
-global.alert_timer = 0; // Initialized here, managed in Step event
-global.search_timer = 0; // Search phase timer, tracks longest active search
+global.alert_timer = 0;
+global.search_timer = 0;
 
-// Create HUD instance
 global.hud = instance_create_layer(0, 0, "GUI", obj_hud);
-
-// Initialize global.equipment array to track equipped item IDs
-global.equipment = array_create(2, -1); // 2 slots: [0] for utility, [1] for weapon, -1 means empty
-
-// Initialize global.current_room_tag to store the current room the player is in
+global.equipment = array_create(2, -1);
 global.current_room_tag = "none";

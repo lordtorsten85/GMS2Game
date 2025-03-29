@@ -28,45 +28,65 @@ with (obj_inventory) {
             }
         }
 
-        // Draw items and stack quantities
-        for (var i = 0; i < grid_width; i++) {
-            for (var j = 0; j < grid_height; j++) {
-                var slot = inventory[# i, j];
-                if (slot != -1 && is_array(slot)) {
-                    var item_id = slot[0];
-                    var placement_id = slot[1];
-                    var qty = slot[2];
-                    var sprite = global.item_data[item_id][5];
-                    var item_width = global.item_data[item_id][1];
-                    var item_height = global.item_data[item_id][2];
-                    var slot_x = inv_gui_x + i * (object_index == obj_equipment_slots ? slot_size + spacing : slot_size);
-                    var slot_y = inv_gui_y + j * slot_size;
+// Draw items and stack quantities
+for (var i = 0; i < grid_width; i++) {
+    for (var j = 0; j < grid_height; j++) {
+        var slot = inventory[# i, j];
+        if (slot != -1 && is_array(slot)) {
+            var item_id = slot[0];
+            var placement_id = slot[1];
+            var qty = slot[2]; // qty = rounds in this stack
+            var sprite = global.item_data[item_id][5];
+            var item_width = global.item_data[item_id][1];
+            var item_height = global.item_data[item_id][2];
+            var slot_x = inv_gui_x + i * (object_index == obj_equipment_slots ? slot_size + spacing : slot_size);
+            var slot_y = inv_gui_y + j * slot_size;
 
-                    var should_draw = (item_width == 1 && item_height == 1);
-                    if (!should_draw) {
-                        should_draw = (i == 0 || !is_array(inventory[# i-1, j]) || inventory[# i-1, j][1] != placement_id) &&
-                                      (j == 0 || !is_array(inventory[# i, j-1]) || inventory[# i, j-1][1] != placement_id);
+            var should_draw = (item_width == 1 && item_height == 1);
+            if (!should_draw) {
+                should_draw = (i == 0 || !is_array(inventory[# i-1, j]) || inventory[# i-1, j][1] != placement_id) &&
+                              (j == 0 || !is_array(inventory[# i, j-1]) || inventory[# i, j-1][1] != placement_id);
+            }
+
+            if (should_draw) {
+                var draw_width = (object_index == obj_equipment_slots ? slot_size : item_width * slot_size);
+                var draw_height = (object_index == obj_equipment_slots ? slot_size : item_height * slot_size);
+                var scale_x = draw_width / sprite_get_width(sprite);
+                var scale_y = draw_height / sprite_get_height(sprite);
+                draw_sprite_ext(sprite, 0, slot_x, slot_y, scale_x, scale_y, 0, c_white, 1);
+
+                // Draw magazine count in top-left (omit if 1)
+                if (ds_map_exists(global.ammo_to_weapon, item_id)) {
+                    var rounds_per_magazine = global.ammo_to_weapon[? item_id][2]; // 10 rounds per magazine
+                    var magazine_count = ceil(qty / rounds_per_magazine);
+                    if (magazine_count > 1) {
+                        draw_set_font(-1);
+                        draw_set_color(c_black);
+                        draw_text(slot_x + 2, slot_y + 2, string(magazine_count)); // Top-left: number of magazines
+                        draw_set_color(c_white);
+                        draw_text(slot_x, slot_y, string(magazine_count));
                     }
+                } else if (global.item_data[item_id][3] && qty > 1) {
+                    draw_set_font(-1);
+                    draw_set_color(c_black);
+                    draw_text(slot_x + 2, slot_y + 2, string(qty)); // Non-ammo stackable items
+                    draw_set_color(c_white);
+                    draw_text(slot_x, slot_y, string(qty));
+                }
 
-                    if (should_draw) {
-                        var draw_width = (object_index == obj_equipment_slots ? slot_size : item_width * slot_size);
-                        var draw_height = (object_index == obj_equipment_slots ? slot_size : item_height * slot_size);
-                        var scale_x = draw_width / sprite_get_width(sprite);
-                        var scale_y = draw_height / sprite_get_height(sprite);
-                        draw_sprite_ext(sprite, 0, slot_x, slot_y, scale_x, scale_y, 0, c_white, 1);
-
-                        if (global.item_data[item_id][3] && qty > 1) {
-                            draw_set_font(-1);
-                            draw_set_color(c_black);
-                            draw_text(slot_x + 2, slot_y + 2, string(qty));
-                            draw_set_color(c_white);
-                            draw_text(slot_x, slot_y, string(qty));
-                        }
-                    }
+                // Draw total rounds for ammo items in bottom-right
+                if (ds_map_exists(global.ammo_to_weapon, item_id)) {
+                    var total_rounds = qty; // Rounds in this stack
+                    var rounds_text = string(total_rounds);
+                    draw_set_color(c_black);
+                    draw_text(slot_x + slot_size - string_width(rounds_text) - 2, slot_y + slot_size - string_height(rounds_text) - 2, rounds_text); // Bottom-right: rounds in this stack
+                    draw_set_color(c_white);
+                    draw_text(slot_x + slot_size - string_width(rounds_text), slot_y + slot_size - string_height(rounds_text), rounds_text);
                 }
             }
         }
-
+    }
+}
         var gui_mouse_x = device_mouse_x_to_gui(0);
         var gui_mouse_y = device_mouse_y_to_gui(0);
 

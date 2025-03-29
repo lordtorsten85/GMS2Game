@@ -198,10 +198,10 @@ draw_surface(minimap_surface, minimap_x, minimap_y);
 draw_set_color($FFAA00); // Techy blue border
 draw_rectangle(minimap_x, minimap_y, minimap_x + minimap_width, minimap_y + minimap_height, true);
 
-var ammo_x = minimap_x + minimap_width + 20; // Position ammo after minimap
+var ammo_x = minimap_x + minimap_width + 20;
 var ammo_y = background_y + (hud_height - 20);
-if (ammo_current > 0) {
-    draw_text(ammo_x, ammo_y, "Ammo: " + string(ammo_current) + "/" + string(ammo_max));
+if (ammo_current >= 0) { // Show even at 0
+    draw_text(ammo_x, ammo_y, "Ammo: " + string(ammo_current)); // Just total rounds
 }
 
 draw_set_color(c_white);

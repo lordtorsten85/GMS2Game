@@ -1,20 +1,9 @@
 // obj_manager - Step Event
-// Description: Manages global input, dragging, inventory closure, ammo updates, and enemy alert timer.
-// Variable Definitions (set in Create event):
-// - pause (boolean): Indicates if the game is paused
-// - pause_seq (asset): Sequence for pause screen
-// - health_max (real): Maximum player health
-// - health_current (real): Current player health
-// - ammo_counts (asset - ds_map): Map of ammo types and counts
-// - ammo_current (real): Current ammo for equipped weapon
-// - ammo_max (real): Maximum ammo for equipped weapon
-
 if (global.mouse_input_delay > 0) {
     global.mouse_input_delay--;
-    exit; // Block ALL input (including context menu) until delay clears
+    exit;
 }
 
-// Handle dragging start - Delayed to prevent immediate re-drag
 if (mouse_check_button_pressed(mb_left) && global.mouse_input_delay <= 0 && !instance_exists(obj_context_menu)) {
     with (obj_inventory) {
         if (is_open && dragging == -1 && global.dragging_inventory == -1 && just_swap_timer == 0) {
@@ -23,7 +12,7 @@ if (mouse_check_button_pressed(mb_left) && global.mouse_input_delay <= 0 && !ins
     }
 }
 
-// Handle dragging release
+// Drop logic
 if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && global.mouse_input_delay <= 0) {
     var dragging_inv = global.dragging_inventory;
     var gui_mouse_x = device_mouse_x_to_gui(0);
@@ -40,6 +29,9 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
     var is_moddable = global.item_data[item_id][8];
     var mod_grid_to_transfer = (is_moddable && ds_map_exists(global.mod_inventories, placement_id)) ? global.mod_inventories[? placement_id] : -1;
 
+    var rounds_per_magazine = ds_map_exists(global.ammo_to_weapon, item_id) ? global.ammo_to_weapon[? item_id][2] : 1;
+    var max_rounds = max_stack * rounds_per_magazine;
+
     show_debug_message("Before drop - Dragging: " + string(dragging_inv.dragging) + ", Contained items: " + string(contained_items));
 
     if (is_moddable && ds_exists(mod_grid_to_transfer, ds_type_grid) && array_length(contained_items) == 0) {
@@ -54,16 +46,24 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
         var target_x = (dragging_inv.inventory_type == "equipment_slots") ? floor((gui_mouse_x - dragging_inv.inv_gui_x) / (dragging_inv.slot_size + dragging_inv.spacing)) : floor((item_x - dragging_inv.inv_gui_x) / dragging_inv.slot_size);
         var target_y = floor((item_y - dragging_inv.inv_gui_y) / dragging_inv.slot_size);
 
-        if (dragging_inv.inventory_type != "equipment_slots") {
-            var x_offset = (item_x - dragging_inv.inv_gui_x) % dragging_inv.slot_size;
-            var y_offset = (item_y - dragging_inv.inv_gui_y) % dragging_inv.slot_size;
-            if (x_offset > dragging_inv.slot_size * 0.75 && target_x + item_width < dragging_inv.grid_width) target_x += 1;
-            if (y_offset > dragging_inv.slot_size * 0.75 && target_y + item_height < dragging_inv.grid_height) target_y += 1;
-            target_x = clamp(target_x, 0, dragging_inv.grid_width - item_width);
-            target_y = clamp(target_y, 0, dragging_inv.grid_height - item_height);
+        if (instance_exists(dragging_inv)) {
+            if (dragging_inv.inventory_type != "equipment_slots") {
+                var x_offset = (item_x - dragging_inv.inv_gui_x) % dragging_inv.slot_size;
+                var y_offset = (item_y - dragging_inv.inv_gui_y) % dragging_inv.slot_size;
+                if (x_offset > dragging_inv.slot_size * 0.75 && target_x + item_width < dragging_inv.grid_width) target_x += 1;
+                if (y_offset > dragging_inv.slot_size * 0.75 && target_y + item_height < dragging_inv.grid_height) target_y += 1;
+                target_x = clamp(target_x, 0, dragging_inv.grid_width - item_width);
+                target_y = clamp(target_y, 0, dragging_inv.grid_height - item_height);
+            } else {
+                target_y = 0;
+                target_x = clamp(target_x, 0, dragging_inv.grid_width - 1);
+            }
         } else {
-            target_y = 0; // Force y to 0 for equipment slots (1D grid)
-            target_x = clamp(target_x, 0, dragging_inv.grid_width - 1);
+            show_debug_message("Error: dragging_inv invalid during drop");
+            dragging_inv.dragging = -1;
+            global.dragging_inventory = -1;
+            global.mouse_input_delay = 15;
+            exit;
         }
 
         show_debug_message("Mouse GUI: [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "], Item: [" + string(item_x) + "," + string(item_y) + "], Target: [" + string(target_x) + "," + string(target_y) + "] in " + dragging_inv.inventory_type);
@@ -72,7 +72,6 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
             var target_slot = dragging_inv.inventory[# target_x, target_y];
             var can_drop = (dragging_inv.inventory_type == "equipment_slots") ? (global.item_data[item_id][6] == dragging_inv.slot_types[target_x] && target_slot == -1) : inventory_can_fit(target_x, target_y, item_width, item_height, dragging_inv.inventory);
 
-            // Check if target slot is part of a matching stack (multi-cell aware)
             var merge_slot = -1;
             var merge_x = -1;
             var merge_y = -1;
@@ -86,9 +85,8 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
             }
 
             if (merge_slot != -1 && is_array(merge_slot) && merge_slot[0] == item_id && target_x >= merge_x && target_x < merge_x + item_width && target_y >= merge_y && target_y < merge_y + item_height) {
-                // Merge onto exact stack
                 var current_qty = merge_slot[2];
-                var space_left = max_stack - current_qty;
+                var space_left = max_rounds - current_qty;
                 if (space_left > 0 && qty > 0) {
                     var qty_to_add = min(qty, space_left);
                     merge_slot[2] = current_qty + qty_to_add;
@@ -100,16 +98,15 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                     qty -= qty_to_add;
                     if (qty > 0) {
                         dragging_inv.dragging[2] = qty;
-                        show_debug_message("Merged " + string(qty_to_add) + " " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "], " + string(qty) + " remain");
+                        show_debug_message("Merged " + string(qty_to_add) + " rounds of " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "], " + string(qty) + " rounds remain");
                     } else {
                         dragging_inv.dragging = -1;
                         global.dragging_inventory = -1;
-                        show_debug_message("Merged " + string(qty_to_add) + " " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "] fully");
+                        show_debug_message("Merged " + string(qty_to_add) + " rounds of " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "] fully");
                     }
-                    global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
+                    global.mouse_input_delay = 15;
                 }
             } else if (can_drop) {
-                // Place item at target slot
                 dragging_inv.inventory[# target_x, target_y] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
                     for (var w = 0; w < item_width; w++) {
@@ -122,12 +119,11 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 }
                 dragging_inv.dragging = -1;
                 global.dragging_inventory = -1;
-                global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
-                dragging_inv.just_split_timer = 0; // Reset to allow immediate context menu
-                show_debug_message("Dropped " + string(qty) + " " + global.item_data[item_id][0] + " into " + dragging_inv.inventory_type + " at [" + string(target_x) + "," + string(target_y) + "] with contained_items: " + string(contained_items));
-                qty = 0; // Ensure no remaining qty
+                global.mouse_input_delay = 15;
+                dragging_inv.just_split_timer = 0;
+                show_debug_message("Dropped " + string(qty) + " rounds of " + global.item_data[item_id][0] + " into " + dragging_inv.inventory_type + " at [" + string(target_x) + "," + string(target_y) + "] with contained_items: " + string(contained_items));
+                qty = 0;
             } else {
-                // Return to original if no space
                 dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
                     for (var w = 0; w < item_width; w++) {
@@ -140,13 +136,12 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 }
                 dragging_inv.dragging = -1;
                 global.dragging_inventory = -1;
-                global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
-                dragging_inv.just_split_timer = 0; // Reset to allow immediate context menu
-                show_debug_message("Returned " + string(qty) + " " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] - no space");
-                qty = 0; // Ensure no remaining qty
+                global.mouse_input_delay = 15;
+                dragging_inv.just_split_timer = 0;
+                show_debug_message("Returned " + string(qty) + " rounds of " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] - no space");
+                qty = 0;
             }
 
-            // Only handle remaining qty after partial merge
             if (qty > 0) {
                 var placed = false;
                 for (var i = 0; i < dragging_inv.grid_width - item_width + 1 && !placed; i++) {
@@ -160,7 +155,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                                     }
                                 }
                             }
-                            show_debug_message("Placed remaining " + string(qty) + " " + global.item_data[item_id][0] + " at [" + string(i) + "," + string(j) + "] after partial merge");
+                            show_debug_message("Placed remaining " + string(qty) + " rounds of " + global.item_data[item_id][0] + " at [" + string(i) + "," + string(j) + "] after partial merge");
                             placed = true;
                         }
                     }
@@ -174,16 +169,17 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                             }
                         }
                     }
-                    show_debug_message("Returned remaining " + string(qty) + " " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] after partial merge");
+                    show_debug_message("Returned remaining " + string(qty) + " rounds of " + global.item_data[item_id][0] + " to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "] after partial merge");
                 }
                 dragging_inv.dragging = -1;
                 global.dragging_inventory = -1;
-                global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
-                dragging_inv.just_split_timer = 0; // Reset to allow immediate context menu
+                global.mouse_input_delay = 15;
+                dragging_inv.just_split_timer = 0;
             }
         }
     } else {
         var dropped = false;
+        var over_equipment = false;
         with (obj_inventory) {
             bounds_width = (inventory_type == "equipment_slots") ? (grid_width * slot_size + (grid_width - 1) * spacing) : (grid_width * slot_size);
             if (id != dragging_inv && is_open && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + (grid_height * slot_size))) {
@@ -198,7 +194,7 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                     drop_x = clamp(drop_x, 0, grid_width - item_width);
                     drop_y = clamp(drop_y, 0, grid_height - item_height);
                 } else {
-                    drop_y = 0; // Force y to 0 for equipment slots (1D grid)
+                    drop_y = 0;
                     drop_x = clamp(drop_x, 0, grid_width - 1);
                 }
 
@@ -207,6 +203,14 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 if (drop_x >= 0 && drop_x < grid_width && drop_y >= 0 && drop_y < grid_height) {
                     var target_slot = inventory[# drop_x, drop_y];
                     var can_drop = (inventory_type == "equipment_slots") ? (global.item_data[item_id][6] == slot_types[drop_x] && target_slot == -1) : inventory_can_fit(drop_x, drop_y, item_width, item_height, inventory);
+                    
+                    if (inventory_type == "equipment_slots") {
+                        show_debug_message("Checking drop: item_id=" + string(item_id) + ", type=" + string(global.item_data[item_id][6]) + ", slot_type=" + string(slot_types[drop_x]) + ", can_drop=" + string(can_drop));
+                        if (global.item_data[item_id][6] == ITEM_TYPE.GENERIC) {
+                            can_drop = false;
+                            over_equipment = true;
+                        }
+                    }
 
                     if (can_drop && string_pos("mod_", inventory_type) == 1) {
                         var parent_item_id = id.item_id;
@@ -225,14 +229,14 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                             }
                             dragging_inv.dragging = -1;
                             global.dragging_inventory = -1;
-                            global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
+                            global.mouse_input_delay = 15;
                             dropped = true;
                         }
                     }
 
                     if (can_drop) {
                         inventory[# drop_x, drop_y] = [item_id, placement_id, qty, contained_items];
-                        global.equipment[drop_x] = item_id; // Sync global.equipment with the dropped item
+                        global.equipment[drop_x] = item_id;
                         if (inventory_type != "equipment_slots") {
                             for (var w = 0; w < item_width; w++) {
                                 for (var h = 0; h < item_height; h++) {
@@ -252,8 +256,8 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                         }
                         dragging_inv.dragging = -1;
                         global.dragging_inventory = -1;
-                        global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
-                        dragging_inv.just_split_timer = 0; // Reset to allow immediate context menu
+                        global.mouse_input_delay = 15;
+                        dragging_inv.just_split_timer = 0;
                         dropped = true;
                         if (inventory_type == "equipment_slots") {
                             show_debug_message("Dropped " + global.item_data[item_id][0] + " into equipment slot at [" + string(drop_x) + ",0] from another inventory");
@@ -264,18 +268,34 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 }
             }
         }
+        
         if (!dropped) {
-            instance_create_layer(obj_player.x + irandom_range(-8, 8), obj_player.y + irandom_range(-8, 8), "Instances", obj_item, {
-                item_id: item_id,
-                stack_quantity: qty,
-                placement_id: placement_id,
-                contained_items: contained_items
-            });
-            show_debug_message("Dropped " + global.item_data[item_id][0] + " on ground from " + dragging_inv.inventory_type + " with contained_items: " + string(contained_items));
+            if (over_equipment) {
+                dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
+                if (dragging_inv.inventory_type != "equipment_slots") {
+                    for (var w = 0; w < item_width; w++) {
+                        for (var h = 0; h < item_height; h++) {
+                            if (w != 0 || h != 0) {
+                                dragging_inv.inventory[# dragging_inv.original_mx + w, dragging_inv.original_my + h] = [item_id, placement_id, qty, contained_items];
+                            }
+                        }
+                    }
+                }
+                show_debug_message("Rejected " + global.item_data[item_id][0] + " from equipment slot, returned " + string(qty) + " rounds to original [" + string(dragging_inv.original_mx) + "," + string(dragging_inv.original_my) + "]");
+            } else {
+                var stack_quantity = ds_map_exists(global.ammo_to_weapon, item_id) ? ceil(qty / rounds_per_magazine) : qty;
+                instance_create_layer(obj_player.x + irandom_range(-8, 8), obj_player.y + irandom_range(-8, 8), "Instances", obj_item, {
+                    item_id: item_id,
+                    stack_quantity: stack_quantity,
+                    placement_id: placement_id,
+                    contained_items: contained_items
+                });
+                show_debug_message("Dropped " + global.item_data[item_id][0] + " on ground from " + dragging_inv.inventory_type + " with " + string(stack_quantity) + " magazines (" + string(qty) + " rounds), contained_items: " + string(contained_items));
+            }
             dragging_inv.dragging = -1;
             global.dragging_inventory = -1;
-            global.mouse_input_delay = 15; // Restore delay to prevent immediate drop
-            dragging_inv.just_split_timer = 0; // Reset to allow immediate context menu
+            global.mouse_input_delay = 15;
+            dragging_inv.just_split_timer = 0;
         }
     }
 }
@@ -291,7 +311,7 @@ if (mouse_check_button_pressed(mb_right) && global.dragging_inventory == -1 && !
             var bounds_height = (inventory_type == "equipment_slots") ? slot_size : (grid_height * slot_size);
             if (point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + bounds_height)) {
                 target_inventory = id;
-                break; // Lock onto the first inventory with the mouse inside its bounds
+                break;
             } else {
                 show_debug_message("Mouse [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "] outside " + inventory_type + " bounds [" + string(inv_gui_x) + "," + string(inv_gui_y) + "] to [" + string(inv_gui_x + bounds_width) + "," + string(inv_gui_y + bounds_height) + "]");
             }
@@ -389,36 +409,48 @@ with (obj_inventory) {
     }
 }
 
-// Update ammo based on equipped weapon (fixed to preserve current ammo)
+// Update ammo based on equipped weapon
 if (instance_exists(global.equipment_slots)) {
-    var weapon_slot = global.equipment_slots.inventory[# 1, 0]; // Weapon slot
+    var weapon_slot = global.equipment_slots.inventory[# 1, 0];
     if (is_array(weapon_slot) && weapon_slot[0] != -1) {
         var weapon_id = weapon_slot[0];
-        var weapon_name = string_lower(global.item_data[weapon_id][0]); // e.g., "small_gun"
-        if (ds_exists(ammo_counts, ds_type_map)) {
-            if (!ds_map_exists(ammo_counts, weapon_name)) {
-                ds_map_add(ammo_counts, weapon_name, 30); // Default ammo on equip
-                ds_map_add(ammo_counts, weapon_name + "_max", 50); // Default max
+        var weapon_name = string_lower(global.item_data[weapon_id][0]);
+        var ammo_item_id = -1;
+
+        var ammo_key = ds_map_find_first(global.ammo_to_weapon);
+        while (!is_undefined(ammo_key)) {
+            var ammo_data = global.ammo_to_weapon[? ammo_key];
+            if (ammo_data[1] == weapon_id) {
+                ammo_item_id = ammo_key;
+                break;
             }
-            // Only update ammo_current if not already set or weapon changed
-            if (ammo_current == 0 || !ds_map_exists(ammo_counts, "last_weapon") || ds_map_find_value(ammo_counts, "last_weapon") != weapon_name) {
-                ammo_current = ds_map_find_value(ammo_counts, weapon_name);
-                ammo_max = ds_map_find_value(ammo_counts, weapon_name + "_max");
-                ds_map_add(ammo_counts, "last_weapon", weapon_name); // Track last weapon
+            ammo_key = ds_map_find_next(global.ammo_to_weapon, ammo_key);
+        }
+
+        if (ammo_item_id != -1) {
+            var ammo_type = global.ammo_to_weapon[? ammo_item_id][0];
+            var total_rounds = 0;
+            for (var i = 0; i < ds_grid_width(global.backpack.inventory); i++) {
+                for (var j = 0; j < ds_grid_height(global.backpack.inventory); j++) {
+                    var slot = global.backpack.inventory[# i, j];
+                    if (is_array(slot) && slot[0] == ammo_item_id) {
+                        total_rounds += slot[2];
+                    }
+                }
             }
+            ds_map_replace(ammo_counts, ammo_type, total_rounds);
+            ammo_current = total_rounds;
+            show_debug_message("Equipped " + weapon_name + " with " + string(total_rounds) + " rounds from backpack");
         } else {
             ammo_current = 0;
-            ammo_max = 0;
         }
     } else {
         ammo_current = 0;
-        ammo_max = 0;
     }
 }
 
 // Handle enemy alert timer
 if (enemies_alerted && global.alert_timer > 0) {
-    // Check if any enemy still sees the player
     var player_spotted = false;
     with (obj_enemy_parent) {
         if (state == "alert" && point_distance(x, y, obj_player.x, obj_player.y) <= detection_range) {
@@ -431,7 +463,7 @@ if (enemies_alerted && global.alert_timer > 0) {
         }
     }
     if (player_spotted) {
-        global.alert_timer = 600; // Reset to 10 sec if player is spotted
+        global.alert_timer = 600;
         show_debug_message("Alert timer reset - player still spotted");
     } else {
         global.alert_timer--;
@@ -444,10 +476,10 @@ if (enemies_alerted && global.alert_timer > 0) {
 
 // Handle search timer when alert is off
 if (!enemies_alerted) {
-    global.search_timer = 0; // Reset unless an enemy is searching
+    global.search_timer = 0;
     with (obj_enemy_parent) {
         if (state == "search" && search_timer > global.search_timer) {
-            global.search_timer = search_timer; // Take the longest active search
+            global.search_timer = search_timer;
         }
     }
 }
