@@ -71,3 +71,7 @@ global.search_timer = 0;
 global.hud = instance_create_layer(0, 0, "GUI", obj_hud);
 global.equipment = array_create(2, -1);
 global.current_room_tag = "none";
+
+//Initialize utility variables
+if (!variable_global_exists("optics_enabled")) global.optics_enabled = false;
+if (!variable_global_exists("optics_ir_enabled")) global.optics_ir_enabled = false;

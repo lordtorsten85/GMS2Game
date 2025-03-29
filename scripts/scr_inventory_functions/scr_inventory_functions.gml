@@ -18,7 +18,7 @@ function inventory_add_item(inventory_instance, item_id, qty, respect_max_stack,
     var rounds_per_magazine = ds_map_exists(global.ammo_to_weapon, item_id) ? global.ammo_to_weapon[? item_id][2] : 1;
     var max_rounds = max_stack * rounds_per_magazine; // e.g., 10 * 10 = 100 for Small Gun Ammo
 
-    show_debug_message("Adding " + string(qty) + " rounds of " + global.item_data[item_id][0] + " with max_rounds " + string(max_rounds));
+    //show_debug_message("Adding " + string(qty) + " rounds of " + global.item_data[item_id][0] + " with max_rounds " + string(max_rounds));
 
     if (is_stackable && respect_max_stack) {
         for (var i = 0; i < inventory_instance.grid_width; i++) {
@@ -97,7 +97,7 @@ function inventory_add_at(x, y, item_id, qty, grid, contained_items = undefined)
         global.mod_inventories[? placement_id] = mod_grid;
     }
 
-    show_debug_message("Placed " + string(qty) + " " + item_name + " at [" + string(x) + "," + string(y) + "] with placement_id " + string(placement_id) + ", contained_items: " + string(contained));
+   // show_debug_message("Placed " + string(qty) + " " + item_name + " at [" + string(x) + "," + string(y) + "] with placement_id " + string(placement_id) + ", contained_items: " + string(contained));
 }
 
 function inventory_remove(x, y, grid) {
@@ -112,7 +112,7 @@ function inventory_remove(x, y, grid) {
             grid[# i, j] = -1;
         }
     }
-    show_debug_message("Removed item from [" + string(x) + "," + string(y) + "]");
+  //  show_debug_message("Removed item from [" + string(x) + "," + string(y) + "]");
 }
 
 function inventory_expand(inv_instance, new_width, new_height) {

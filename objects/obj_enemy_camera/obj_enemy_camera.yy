@@ -33,7 +33,7 @@
     {"$GMObjectProperty":"v1","%Name":"detection_angle","filters":[],"listItems":[],"multiselect":false,"name":"detection_angle","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"90","varType":0,},
     {"$GMObjectProperty":"v1","%Name":"scan_speed","filters":[],"listItems":[],"multiselect":false,"name":"scan_speed","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"0.5","varType":0,},
     {"$GMObjectProperty":"v1","%Name":"scan_angle","filters":[],"listItems":[],"multiselect":false,"name":"scan_angle","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"0","varType":0,},
-    {"$GMObjectProperty":"v1","%Name":"pause_duration_seconds","filters":[],"listItems":[],"multiselect":false,"name":"pause_duration_seconds","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"2","varType":0,},
+    {"$GMObjectProperty":"v1","%Name":"pause_duration","filters":[],"listItems":[],"multiselect":false,"name":"pause_duration","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"120","varType":0,},
   ],
   "resourceType":"GMObject",
   "resourceVersion":"2.0",

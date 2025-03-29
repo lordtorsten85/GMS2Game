@@ -1,4 +1,6 @@
 // obj_manager - Step Event
+// Description: Manages global input delays, inventory dragging, mod inventory updates, enemy timers, and context menus
+
 if (global.mouse_input_delay > 0) {
     global.mouse_input_delay--;
     exit;
@@ -105,6 +107,10 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                         show_debug_message("Merged " + string(qty_to_add) + " rounds of " + global.item_data[item_id][0] + " at [" + string(merge_x) + "," + string(merge_y) + "] fully");
                     }
                     global.mouse_input_delay = 15;
+                    // Update mod effects if target is a mod inventory
+                    if (string_pos("mod_", dragging_inv.inventory_type) == 1) {
+                        update_mod_effects(dragging_inv);
+                    }
                 }
             } else if (can_drop) {
                 dragging_inv.inventory[# target_x, target_y] = [item_id, placement_id, qty, contained_items];
@@ -123,6 +129,10 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 dragging_inv.just_split_timer = 0;
                 show_debug_message("Dropped " + string(qty) + " rounds of " + global.item_data[item_id][0] + " into " + dragging_inv.inventory_type + " at [" + string(target_x) + "," + string(target_y) + "] with contained_items: " + string(contained_items));
                 qty = 0;
+                // Update mod effects if target is a mod inventory
+                if (string_pos("mod_", dragging_inv.inventory_type) == 1) {
+                    update_mod_effects(dragging_inv);
+                }
             } else {
                 dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
                 if (dragging_inv.inventory_type != "equipment_slots") {
@@ -175,99 +185,111 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
                 global.dragging_inventory = -1;
                 global.mouse_input_delay = 15;
                 dragging_inv.just_split_timer = 0;
+                // Update mod effects if source is a mod inventory
+                if (string_pos("mod_", dragging_inv.inventory_type) == 1) {
+                    update_mod_effects(dragging_inv);
+                }
             }
         }
     } else {
         var dropped = false;
         var over_equipment = false;
-        with (obj_inventory) {
-            bounds_width = (inventory_type == "equipment_slots") ? (grid_width * slot_size + (grid_width - 1) * spacing) : (grid_width * slot_size);
-            if (id != dragging_inv && is_open && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + (grid_height * slot_size))) {
-                var drop_x = (inventory_type == "equipment_slots") ? floor((gui_mouse_x - inv_gui_x) / (slot_size + spacing)) : floor((item_x - inv_gui_x) / slot_size);
-                var drop_y = floor((item_y - inv_gui_y) / slot_size);
+		with (obj_inventory) {
+		    bounds_width = (inventory_type == "equipment_slots") ? (grid_width * slot_size + (grid_width - 1) * spacing) : (grid_width * slot_size);
+		    if (id != dragging_inv && is_open && point_in_rectangle(gui_mouse_x, gui_mouse_y, inv_gui_x, inv_gui_y, inv_gui_x + bounds_width, inv_gui_y + (grid_height * slot_size))) {
+		        var drop_x = (inventory_type == "equipment_slots") ? floor((gui_mouse_x - inv_gui_x) / (slot_size + spacing)) : floor((item_x - inv_gui_x) / slot_size);
+		        var drop_y = floor((item_y - inv_gui_y) / slot_size);
 
-                if (inventory_type != "equipment_slots") {
-                    var x_offset = (item_x - inv_gui_x) % slot_size;
-                    var y_offset = (item_y - inv_gui_y) % slot_size;
-                    if (x_offset > slot_size * 0.75 && drop_x + item_width < grid_width) drop_x += 1;
-                    if (y_offset > slot_size * 0.75 && drop_y + item_height < grid_height) drop_y += 1;
-                    drop_x = clamp(drop_x, 0, grid_width - item_width);
-                    drop_y = clamp(drop_y, 0, grid_height - item_height);
-                } else {
-                    drop_y = 0;
-                    drop_x = clamp(drop_x, 0, grid_width - 1);
-                }
+		        if (inventory_type != "equipment_slots") {
+		            var x_offset = (item_x - inv_gui_x) % slot_size;
+		            var y_offset = (item_y - inv_gui_y) % slot_size;
+		            if (x_offset > slot_size * 0.75 && drop_x + item_width < grid_width) drop_x += 1;
+		            if (y_offset > slot_size * 0.75 && drop_y + item_height < grid_height) drop_y += 1;
+		            drop_x = clamp(drop_x, 0, grid_width - item_width);
+		            drop_y = clamp(drop_y, 0, grid_height - item_height);
+		        } else {
+		            drop_y = 0;
+		            drop_x = clamp(drop_x, 0, grid_width - 1);
+		        }
 
-                show_debug_message("Cross-inventory: Mouse [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "], Item [" + string(item_x) + "," + string(item_y) + "], Drop [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type);
+		        show_debug_message("Cross-inventory: Mouse [" + string(gui_mouse_x) + "," + string(gui_mouse_y) + "], Item [" + string(item_x) + "," + string(item_y) + "], Drop [" + string(drop_x) + "," + string(drop_y) + "] in " + inventory_type);
 
-                if (drop_x >= 0 && drop_x < grid_width && drop_y >= 0 && drop_y < grid_height) {
-                    var target_slot = inventory[# drop_x, drop_y];
-                    var can_drop = (inventory_type == "equipment_slots") ? (global.item_data[item_id][6] == slot_types[drop_x] && target_slot == -1) : inventory_can_fit(drop_x, drop_y, item_width, item_height, inventory);
-                    
-                    if (inventory_type == "equipment_slots") {
-                        show_debug_message("Checking drop: item_id=" + string(item_id) + ", type=" + string(global.item_data[item_id][6]) + ", slot_type=" + string(slot_types[drop_x]) + ", can_drop=" + string(can_drop));
-                        if (global.item_data[item_id][6] == ITEM_TYPE.GENERIC) {
-                            can_drop = false;
-                            over_equipment = true;
-                        }
-                    }
+		        if (drop_x >= 0 && drop_x < grid_width && drop_y >= 0 && drop_y < grid_height) {
+		            var target_slot = inventory[# drop_x, drop_y];
+		            var can_drop = (inventory_type == "equipment_slots") ? (global.item_data[item_id][6] == slot_types[drop_x] && target_slot == -1) : inventory_can_fit(drop_x, drop_y, item_width, item_height, inventory);
+            
+		            if (inventory_type == "equipment_slots") {
+		                show_debug_message("Checking drop: item_id=" + string(item_id) + ", type=" + string(global.item_data[item_id][6]) + ", slot_type=" + string(slot_types[drop_x]) + ", can_drop=" + string(can_drop));
+		                if (global.item_data[item_id][6] == ITEM_TYPE.GENERIC) {
+		                    can_drop = false;
+		                    over_equipment = true;
+		                }
+		            }
 
-                    if (can_drop && string_pos("mod_", inventory_type) == 1) {
-                        var parent_item_id = id.item_id;
-                        can_drop = can_accept_mod(parent_item_id, item_id);
-                        if (!can_drop) {
-                            show_debug_message("Cannot drop " + global.item_data[item_id][0] + " into " + global.item_data[parent_item_id][0] + " - incompatible mod type");
-                            dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
-                            if (dragging_inv.inventory_type != "equipment_slots") {
-                                for (var w = 0; w < item_width; w++) {
-                                    for (var h = 0; h < item_height; h++) {
-                                        if (w != 0 || h != 0) {
-                                            dragging_inv.inventory[# dragging_inv.original_mx + w, dragging_inv.original_my + h] = [item_id, placement_id, qty, contained_items];
-                                        }
-                                    }
-                                }
-                            }
-                            dragging_inv.dragging = -1;
-                            global.dragging_inventory = -1;
-                            global.mouse_input_delay = 15;
-                            dropped = true;
-                        }
-                    }
+		            if (can_drop && string_pos("mod_", inventory_type) == 1) {
+		                var parent_item_id = id.item_id;
+		                can_drop = can_accept_mod(parent_item_id, item_id);
+		                if (!can_drop) {
+		                    show_debug_message("Cannot drop " + global.item_data[item_id][0] + " into " + global.item_data[parent_item_id][0] + " - incompatible mod type");
+		                    dragging_inv.inventory[# dragging_inv.original_mx, dragging_inv.original_my] = [item_id, placement_id, qty, contained_items];
+		                    if (dragging_inv.inventory_type != "equipment_slots") {
+		                        for (var w = 0; w < item_width; w++) {
+		                            for (var h = 0; h < item_height; h++) {
+		                                if (w != 0 || h != 0) {
+		                                    dragging_inv.inventory[# dragging_inv.original_mx + w, dragging_inv.original_my + h] = [item_id, placement_id, qty, contained_items];
+		                                }
+		                            }
+		                        }
+		                    }
+		                    dragging_inv.dragging = -1;
+		                    global.dragging_inventory = -1;
+		                    global.mouse_input_delay = 15;
+		                    dropped = true;
+		                }
+		            }
 
-                    if (can_drop) {
-                        inventory[# drop_x, drop_y] = [item_id, placement_id, qty, contained_items];
-                        global.equipment[drop_x] = item_id;
-                        if (inventory_type != "equipment_slots") {
-                            for (var w = 0; w < item_width; w++) {
-                                for (var h = 0; h < item_height; h++) {
-                                    if (w != 0 || h != 0) {
-                                        inventory[# drop_x + w, drop_y + h] = [item_id, placement_id, qty, contained_items];
-                                    }
-                                }
-                            }
-                        }
-                        if (is_moddable && ds_exists(mod_grid_to_transfer, ds_type_grid)) {
-                            var new_slot = inventory[# drop_x, drop_y];
-                            var new_placement_id = new_slot[1];
-                            if (new_placement_id != placement_id) {
-                                ds_map_delete(global.mod_inventories, placement_id);
-                                global.mod_inventories[? new_placement_id] = mod_grid_to_transfer;
-                            }
-                        }
-                        dragging_inv.dragging = -1;
-                        global.dragging_inventory = -1;
-                        global.mouse_input_delay = 15;
-                        dragging_inv.just_split_timer = 0;
-                        dropped = true;
-                        if (inventory_type == "equipment_slots") {
-                            show_debug_message("Dropped " + global.item_data[item_id][0] + " into equipment slot at [" + string(drop_x) + ",0] from another inventory");
-                        } else {
-                            show_debug_message("Dropped " + global.item_data[item_id][0] + " into " + inventory_type + " at [" + string(drop_x) + "," + string(drop_y) + "] from another inventory");
-                        }
-                    }
-                }
-            }
-        }
+		            if (can_drop) {
+		                inventory[# drop_x, drop_y] = [item_id, placement_id, qty, contained_items];
+		                if (inventory_type == "equipment_slots") {
+		                    global.equipment[drop_x] = item_id; // Only set for base item
+		                }
+		                if (inventory_type != "equipment_slots") {
+		                    for (var w = 0; w < item_width; w++) {
+		                        for (var h = 0; h < item_height; h++) {
+		                            if (w != 0 || h != 0) {
+		                                inventory[# drop_x + w, drop_y + h] = [item_id, placement_id, qty, contained_items];
+		                            }
+		                        }
+		                    }
+		                }
+		                if (is_moddable && ds_exists(mod_grid_to_transfer, ds_type_grid)) {
+		                    var new_slot = inventory[# drop_x, drop_y];
+		                    var new_placement_id = new_slot[1];
+		                    if (new_placement_id != placement_id) {
+		                        ds_map_delete(global.mod_inventories, placement_id);
+		                        global.mod_inventories[? new_placement_id] = mod_grid_to_transfer;
+		                    }
+		                }
+		                dragging_inv.dragging = -1;
+		                global.dragging_inventory = -1;
+		                global.mouse_input_delay = 15;
+		                dragging_inv.just_split_timer = 0;
+		                dropped = true;
+		                if (inventory_type == "equipment_slots") {
+		                    show_debug_message("Dropped " + global.item_data[item_id][0] + " into equipment slot at [" + string(drop_x) + ",0] from another inventory");
+		                } else {
+		                    show_debug_message("Dropped " + global.item_data[item_id][0] + " into " + inventory_type + " at [" + string(drop_x) + "," + string(drop_y) + "] from another inventory");
+		                }
+		                if (string_pos("mod_", inventory_type) == 1) {
+		                    update_mod_effects(id);
+		                }
+		                if (string_pos("mod_", dragging_inv.inventory_type) == 1) {
+		                    update_mod_effects(dragging_inv);
+		                }
+		            }
+		        }
+		    }
+		}
         
         if (!dropped) {
             if (over_equipment) {
@@ -296,6 +318,10 @@ if (mouse_check_button_released(mb_left) && global.dragging_inventory != -1 && g
             global.dragging_inventory = -1;
             global.mouse_input_delay = 15;
             dragging_inv.just_split_timer = 0;
+            // Update mod effects if source was a mod inventory
+            if (string_pos("mod_", dragging_inv.inventory_type) == 1) {
+                update_mod_effects(dragging_inv);
+            }
         }
     }
 }

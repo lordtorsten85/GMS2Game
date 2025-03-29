@@ -14,7 +14,7 @@ function update_room_masks() {
         if (player_in_me) {
             new_active_tag = linked_room_tag;
             player_in_any_mask = true;
-            show_debug_message("Player in mask at [" + string(x) + "," + string(y) + "] with tag '" + linked_room_tag + "', frame " + string(current_time));
+            //show_debug_message("Player in mask at [" + string(x) + "," + string(y) + "] with tag '" + linked_room_tag + "', frame " + string(current_time));
             break; // First mask wins, avoids overlap fights
         }
     }

@@ -22,11 +22,11 @@ function update_collision_grid() {
                         mp_grid_add_cell(grid, xx, yy);
                     }
                 }
-                show_debug_message("Grid updated - Enemy " + point_owner + " added collision at " + string(col.x) + "," + string(col.y) + " - Cells: (" + string(left_cell) + "," + string(top_cell) + ") to (" + string(right_cell) + "," + string(bottom_cell) + ")");
+                //show_debug_message("Grid updated - Enemy " + point_owner + " added collision at " + string(col.x) + "," + string(col.y) + " - Cells: (" + string(left_cell) + "," + string(top_cell) + ") to (" + string(right_cell) + "," + string(bottom_cell) + ")");
             } else {
-                show_debug_message("Grid updated - Enemy " + point_owner + " skipped collision at " + string(col.x) + "," + string(col.y) + " - collision_active is false");
+                //show_debug_message("Grid updated - Enemy " + point_owner + " skipped collision at " + string(col.x) + "," + string(col.y) + " - collision_active is false");
             }
         }
     }
-    show_debug_message("Collision grid updated for all enemies");
+    //show_debug_message("Collision grid updated for all enemies");
 }

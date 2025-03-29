@@ -37,5 +37,5 @@
     "path":"sprites/spr_nav_point/spr_nav_point.yy",
   },
   "spriteMaskId":null,
-  "visible":true,
+  "visible":false,
 }

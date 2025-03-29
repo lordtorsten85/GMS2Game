@@ -25,7 +25,7 @@ if (instance_exists(obj_player)) {
                 alert_icon_timer = 60;    // Show alert icon for 1 sec
                 alert_icon_scale = 1.5;
                 alert_icon_alpha = 1;
-                show_debug_message(point_owner + " triggered alert!");
+                //show_debug_message(point_owner + " triggered alert!");
             }
             last_player_x = obj_player.x;
             last_player_y = obj_player.y;
@@ -42,14 +42,14 @@ switch (state) {
             alert_icon_timer = 60;    // Show alert icon when alerted by camera or others
             alert_icon_scale = 1.5;
             alert_icon_alpha = 1;
-            show_debug_message(point_owner + " joining alert from camera or enemy");
+            //show_debug_message(point_owner + " joining alert from camera or enemy");
         } else if (array_length(patrol_points) > 0) {
             // Check if reached current nav point or path ended
             if (point_distance(x, y, target_x, target_y) <= patrol_speed || path_position >= 1) {
                 current_point = (current_point + 1) % array_length(patrol_points);
                 target_x = patrol_points[current_point].x;
                 target_y = patrol_points[current_point].y;
-                show_debug_message(point_owner + " moving to nav point " + string(current_point) + ": [" + string(target_x) + "," + string(target_y) + "]");
+                //show_debug_message(point_owner + " moving to nav point " + string(current_point) + ": [" + string(target_x) + "," + string(target_y) + "]");
             }
             if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
                 path_start(path, patrol_speed, path_action_stop, false);
@@ -57,7 +57,7 @@ switch (state) {
                 facing_direction = angle_lerp(facing_direction, target_dir, 0.2);
             } else {
                 path_end();
-                show_debug_message(point_owner + " patrol path blocked");
+                //show_debug_message(point_owner + " patrol path blocked");
             }
         }
         break;
@@ -86,11 +86,11 @@ switch (state) {
                     }
                 }
                 if (found) {
-                    show_debug_message(point_owner + " adjusted target to open spot: [" + string(chase_x) + "," + string(chase_y) + "]");
+                    //show_debug_message(point_owner + " adjusted target to open spot: [" + string(chase_x) + "," + string(chase_y) + "]");
                 } else {
                     chase_x = x;
                     chase_y = y;
-                    show_debug_message(point_owner + " no open spot near player, holding position");
+                    //show_debug_message(point_owner + " no open spot near player, holding position");
                 }
             }
 
@@ -100,10 +100,10 @@ switch (state) {
                 path_start(path, patrol_speed * 1.2, path_action_stop, false);
                 var player_dir = point_direction(x, y, obj_player.x, obj_player.y);
                 facing_direction = angle_lerp(facing_direction, player_dir, 0.1);
-                show_debug_message(point_owner + " chasing player at [" + string(target_x) + "," + string(target_y) + "]");
+                //show_debug_message(point_owner + " chasing player at [" + string(target_x) + "," + string(target_y) + "]");
             } else {
                 path_end();
-                show_debug_message(point_owner + " path to target blocked, waiting");
+                //show_debug_message(point_owner + " path to target blocked, waiting");
             }
         }
         // Transition to search when alert timer ends
@@ -117,7 +117,7 @@ switch (state) {
             }
             target_x = last_player_x;
             target_y = last_player_y;
-            show_debug_message(point_owner + " entering search phase, heading to last known position: [" + string(target_x) + "," + string(target_y) + "]");
+            //show_debug_message(point_owner + " entering search phase, heading to last known position: [" + string(target_x) + "," + string(target_y) + "]");
         }
         break;
 
@@ -143,9 +143,9 @@ switch (state) {
                 if (attempts > 10) {
                     target_x = x;
                     target_y = y;
-                    show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
+                    //show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
                 } else {
-                    show_debug_message(point_owner + " searching near last position at: [" + string(target_x) + "," + string(target_y) + "]");
+                    //show_debug_message(point_owner + " searching near last position at: [" + string(target_x) + "," + string(target_y) + "]");
                 }
                 search_pause_timer = 180; // 3 sec pause
             }
@@ -155,10 +155,10 @@ switch (state) {
             var next_y = path_get_y(path, path_position + 0.01);
             var move_dir = point_direction(x, y, next_x, next_y);
             facing_direction = angle_lerp(facing_direction, move_dir, 0.03);
-            show_debug_message(point_owner + " moving to search target: [" + string(target_x) + "," + string(target_y) + "]");
+           // show_debug_message(point_owner + " moving to search target: [" + string(target_x) + "," + string(target_y) + "]");
         } else {
             path_end();
-            show_debug_message(point_owner + " search path blocked, picking new spot");
+            //show_debug_message(point_owner + " search path blocked, picking new spot");
             target_x = x;
             target_y = y;
             search_pause_timer = 0; // Reset pause to try again
@@ -174,10 +174,10 @@ switch (state) {
                 if (!mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
                     target_x = x;
                     target_y = y;
-                    show_debug_message("Return path blocked for " + point_owner);
+                    //show_debug_message("Return path blocked for " + point_owner);
                 }
             }
-            show_debug_message(point_owner + " returning to patrol");
+           // show_debug_message(point_owner + " returning to patrol");
         }
         break;
 }

@@ -42,11 +42,11 @@ function scr_pickup_ammo(item_instance) {
         var weapon_slot = global.equipment_slots.inventory[# 1, 0];
         if (is_array(weapon_slot) && weapon_slot[0] == weapon_id) {
             obj_manager.ammo_current = new_ammo;
-            show_debug_message("Equipped " + global.item_data[weapon_id][0] + " ammo updated to: " + string(new_ammo));
+            //show_debug_message("Equipped " + global.item_data[weapon_id][0] + " ammo updated to: " + string(new_ammo));
         }
     }
 
-    show_debug_message("Picked up " + string(ammo_to_add) + " " + global.item_data[item_id][0] + ". Total now: " + string(new_ammo) + "/" + string(max_ammo));
+    //show_debug_message("Picked up " + string(ammo_to_add) + " " + global.item_data[item_id][0] + ". Total now: " + string(new_ammo) + "/" + string(max_ammo));
     
     item_instance.stack_quantity -= ammo_to_add;
     return (item_instance.stack_quantity <= 0);

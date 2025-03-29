@@ -124,23 +124,23 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
                 }
             }
         } else if (option == "Equip" && inventory.inventory_type == "backpack" && item_id >= 0) {
-		    var item_type = global.item_data[item_id][6];
-		    var target_slot = (item_type == ITEM_TYPE.UTILITY) ? 0 : 1;
-		    var equip_inv = global.equipment_slots;
+            var item_type = global.item_data[item_id][6];
+            var target_slot = (item_type == ITEM_TYPE.UTILITY) ? 0 : 1;
+            var equip_inv = global.equipment_slots;
 
-		    if (instance_exists(equip_inv) && ds_exists(equip_inv.inventory, ds_type_grid)) {
-		        var current_slot = equip_inv.inventory[# target_slot, 0];
-		        if (is_array(current_slot) || equip_inv.inventory[# target_slot, 0] == -1) {
-		            var success = equip_unequip_item(item_id, item_type, "equip");
-		            if (!success) {
-		                show_debug_message("Equip failed for " + global.item_data[item_id][0]);
-		            }
-		        } else {
-		            show_debug_message("Invalid slot for equip action");
-		        }
-		    } else {
-		        show_debug_message("Error: Equipment slots instance or inventory grid not found");
-		    }
+            if (instance_exists(equip_inv) && ds_exists(equip_inv.inventory, ds_type_grid)) {
+                var current_slot = equip_inv.inventory[# target_slot, 0];
+                if (is_array(current_slot) || equip_inv.inventory[# target_slot, 0] == -1) {
+                    var success = equip_unequip_item(item_id, item_type, "equip");
+                    if (!success) {
+                        show_debug_message("Equip failed for " + global.item_data[item_id][0]);
+                    }
+                } else {
+                    show_debug_message("Invalid slot for equip action");
+                }
+            } else {
+                show_debug_message("Error: Equipment slots instance or inventory grid not found");
+            }
         } else if (option == "Unequip" && inventory.inventory_type == "equipment_slots" && item_id >= 0) {
             var item_type = global.item_data[item_id][6];
             var target_slot = (item_type == ITEM_TYPE.UTILITY) ? 0 : 1;
@@ -186,6 +186,21 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
                         inventory_add_at(mod_slot[1], mod_slot[2], mod_slot[0], mod_slot[3], mod_inv.inventory);
                     }
                 }
+                // Ensure parent slot updates when mod inventory closes
+                mod_inv.on_close = function() {
+                    with (self) { // Bind to mod_inv instance
+                        if (variable_instance_exists(id, "parent_inventory") && instance_exists(parent_inventory) && ds_exists(parent_inventory.inventory, ds_type_grid)) {
+                            if (variable_instance_exists(id, "parent_slot_x") && variable_instance_exists(id, "parent_slot_y")) {
+                                var slot = parent_inventory.inventory[# parent_slot_x, parent_slot_y];
+                                if (is_array(slot)) {
+                                    slot[3] = ds_grid_to_array(inventory);
+                                    parent_inventory.inventory[# parent_slot_x, parent_slot_y] = slot;
+                                    show_debug_message("Updated parent slot at [" + string(parent_slot_x) + "," + string(parent_slot_y) + "] with contained_items: " + string(slot[3]));
+                                }
+                            }
+                        }
+                    }
+                };
             }
         }
         instance_destroy();
