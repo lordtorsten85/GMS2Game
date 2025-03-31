@@ -89,7 +89,7 @@ if (instance_exists(obj_player)) {
     with (obj_room_mask) {
         if (point_in_rectangle(obj_player.x, obj_player.y, bbox_left, bbox_top, bbox_right, bbox_bottom)) {
             player_room_tag = linked_room_tag;
-            show_debug_message("Player in room: " + player_room_tag);
+           // show_debug_message("Player in room: " + player_room_tag);
             break;
         }
     }
@@ -128,7 +128,7 @@ with (obj_enemy_parent) {
         var enemy_y = y * other.minimap_scale_y;
         draw_set_color(state == "alert" ? c_red : c_white);
         draw_circle(enemy_x, enemy_y, 2, false);
-        show_debug_message("Enemy at " + string(enemy_x) + "," + string(enemy_y) + " - Room: " + enemy_room_tag + ", DrawCone: " + string(draw_cone) + ", Optics: " + string(global.optics_enabled) + ", IR: " + string(global.optics_ir_enabled));
+        //show_debug_message("Enemy at " + string(enemy_x) + "," + string(enemy_y) + " - Room: " + enemy_room_tag + ", DrawCone: " + string(draw_cone) + ", Optics: " + string(global.optics_enabled) + ", IR: " + string(global.optics_ir_enabled));
         if (draw_cone) {
             draw_set_alpha(0.7);
             var cone_color;
@@ -180,7 +180,7 @@ with (obj_enemy_camera) {
         var cam_y = y * other.minimap_scale_y;
         draw_set_color(state == "detected" ? c_red : c_white);
         draw_circle(cam_x, cam_y, 2, false);
-        show_debug_message("Camera at " + string(cam_x) + "," + string(cam_y) + " - Room: " + cam_room_tag + ", DrawCone: " + string(draw_cone) + ", Optics: " + string(global.optics_enabled) + ", IR: " + string(global.optics_ir_enabled));
+       // show_debug_message("Camera at " + string(cam_x) + "," + string(cam_y) + " - Room: " + cam_room_tag + ", DrawCone: " + string(draw_cone) + ", Optics: " + string(global.optics_enabled) + ", IR: " + string(global.optics_ir_enabled));
         if (draw_cone) {
             draw_set_alpha(0.7);
             var cone_color;

@@ -161,3 +161,4 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
     }
     nearest_item_to_pickup = noone;
 }
+

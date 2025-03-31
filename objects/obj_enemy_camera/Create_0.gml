@@ -12,7 +12,7 @@ alert_cooldown_duration = 120; // Cooldown duration (2 sec at 60 FPS)
 // State machine
 state = "patrol";            // States: "patrol", "detected", "search"
 search_timer = 0;            // Timer for search state (steps)
-search_duration = 600;       // 10 sec at 60 FPS for search phase
+search_duration = 1200;       // 10 sec at 60 FPS for search phase
 
 // Scanning variables
 base_direction = 0;          // Base direction for patrol/search sweep (set in editor or here)

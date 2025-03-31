@@ -490,7 +490,7 @@ if (enemies_alerted && global.alert_timer > 0) {
     }
     if (player_spotted) {
         global.alert_timer = 600;
-        show_debug_message("Alert timer reset - player still spotted");
+       // show_debug_message("Alert timer reset - player still spotted");
     } else {
         global.alert_timer--;
         if (global.alert_timer <= 0) {

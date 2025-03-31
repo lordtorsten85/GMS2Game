@@ -26,6 +26,9 @@ if (instance_exists(inventory) && ds_exists(inventory.inventory, ds_type_grid) &
                 case ITEM_TYPE.WEAPON:
                     array_push(options, "Equip");
                     break;
+                case ITEM_TYPE.CONSUMABLE: // Universal "Use" for all consumables
+                    array_push(options, "Use");
+                    break;
             }
             if (is_moddable) array_push(options, "Mod");
             break;
@@ -201,6 +204,11 @@ if (mouse_check_button_pressed(mb_left) && point_in_rectangle(gui_mouse_x, gui_m
                         }
                     }
                 };
+            }
+        } else if (option == "Use" && inventory.inventory_type == "backpack" && item_id >= 0) { // Universal Use handler
+            var success = use_consumable_item(item_id, inventory, top_left_x, top_left_y);
+            if (!success) {
+                show_debug_message("Failed to use " + global.item_data[item_id][0]);
             }
         }
         instance_destroy();

@@ -20,13 +20,14 @@ function initialize_item_data() {
             GENERIC,
             UTILITY,
             WEAPON,
-            MOD
+            MOD,
+            CONSUMABLE  // Added new type for consumables
         }
     }
 
     // [name, width, height, stackable, color, sprite, type, max stack, moddable, mod_width, mod_height, valid_mod_items]
     global.item_data = [];
-    global.item_data[ITEM.SYRINGE] = ["Syringe", 1, 1, true, c_green, spr_equipment_proto, ITEM_TYPE.GENERIC, 10, false, 0, 0, []];
+    global.item_data[ITEM.SYRINGE] = ["Syringe", 1, 1, true, c_green, spr_equipment_proto, ITEM_TYPE.CONSUMABLE, 10, false, 0, 0, []]; // Changed to CONSUMABLE
     global.item_data[ITEM.SMALL_GUN] = ["Small Gun", 2, 1, false, c_blue, spr_gun_laser, ITEM_TYPE.WEAPON, 1, true, 2, 2, [ITEM.MOD_WEAPON_TEST, ITEM.MOD_WEAPON_TEST_2]];
     global.item_data[ITEM.BIG_GUN] = ["Big Gun", 3, 2, false, c_red, spr_gun_proto, ITEM_TYPE.WEAPON, 1, false, 0, 0, []];
     global.item_data[ITEM.GREEN_KEYCARD] = ["Green Keycard", 2, 1, false, c_green, spr_green_keycard, ITEM_TYPE.GENERIC, 1, false, 0, 0, []];

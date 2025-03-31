@@ -1,23 +1,27 @@
 // obj_enemy - Step Event
-// Updates sprite direction and handles damage.
+// Description: Updates sprite direction, handles damage, and implements melee attack behavior.
 
-// Variable Definitions:
-// - hp (real): Health points for this enemy.
-
-// Inherit parent event
 event_inherited();
 
-// Update sprite direction based on facing_direction
 image_xscale = (facing_direction > 90 && facing_direction < 270) ? -1 : 1;
 
-// Adjust animation speed based on movement
-if (state == "alert") {
-    image_speed = 0.6; // Slightly faster in chase, but not too quick
-} else {
-    image_speed = 0.4; // Slower for patrol/search
+if (state == "chase") {
+    image_speed = 0.6;
+} else if (state == "patrol") {
+    image_speed = 0.4;
+} else if (state == "attack") {
+    image_speed = 0.5;
 }
 
-// Example damage check
+if (state == "attack" && is_attacking) {
+    var player_dist = point_distance(x, y, obj_player.x, obj_player.y);
+    if (player_dist <= attack_range + 4) { // Align with parent’s attack_range (56 + 4 = 60 pixels)
+        obj_manager.health_current -= 10;
+        effect_create_above(4, obj_player.x, obj_player.y, 1, c_white);
+        is_attacking = false;
+    }
+}
+
 if (hp <= 0) {
     instance_destroy();
 }

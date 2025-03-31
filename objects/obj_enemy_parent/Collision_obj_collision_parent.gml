@@ -1,0 +1,1 @@
+//move_contact_solid(point_direction(x, y, other.x, other.y), 1);

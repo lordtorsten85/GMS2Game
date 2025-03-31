@@ -44,5 +44,5 @@ function apply_utility_effects() {
             }
         }
     }
-    show_debug_message("Utility effects - Optics: " + string(global.optics_enabled) + ", IR: " + string(global.optics_ir_enabled));
+    //show_debug_message("Utility effects - Optics: " + string(global.optics_enabled) + ", IR: " + string(global.optics_ir_enabled));
 }
