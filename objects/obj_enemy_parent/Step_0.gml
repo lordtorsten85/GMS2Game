@@ -69,17 +69,22 @@ if (instance_exists(obj_proximity_door_horizontal_desert)) { // Replace obj_door
 
 switch (state) {
 case "patrol":
-    if (instance_exists(obj_manager) && obj_manager.enemies_alerted) {
-        state = "chase";
-        alert_icon_timer = 60;
-        alert_icon_scale = 1.5;
-        alert_icon_alpha = 1;
+    if (instance_exists(obj_manager) && obj_manager.enemies_alerted && instance_exists(obj_player)) {
+        // Check if there's a path to the player
+        var temp_path = path_add();
+        if (mp_grid_path(grid, temp_path, x, y, obj_player.x, obj_player.y, true)) {
+            state = "chase";
+            alert_icon_timer = 60;
+            alert_icon_scale = 1.5;
+            alert_icon_alpha = 1;
+            show_debug_message(point_owner + " alerted and chasing - path found");
+        } else {
+            show_debug_message(point_owner + " alerted but no path to player - staying in patrol");
+        }
+        path_delete(temp_path);
     } else if (array_length(patrol_points) > 0) {
         if (point_distance(x, y, target_x, target_y) <= patrol_speed || path_position == 1) {
-            // Reached the target nav point
             show_debug_message(point_owner + " at point " + string(current_point) + " | Pre-wait: " + string(pre_wait_timer) + " | Wait: " + string(wait_timer / game_get_speed(gamespeed_fps)) + " seconds");
-            
-            // Pre-wait phase: Rotate to target direction
             if (pre_wait_timer > 0) {
                 pre_wait_timer--;
                 var target_dir = facing_direction;
@@ -93,19 +98,15 @@ case "patrol":
                     default: target_dir = facing_direction; break;
                 }
                 facing_direction = angle_lerp(facing_direction, target_dir, 0.1);
-            }
-            // Wait phase: Hold position after rotation
-            else if (wait_timer > 0) {
+            } else if (wait_timer > 0) {
                 wait_timer--;
-            }
-            // Move to next point after both phases
-            else {
+            } else {
                 current_point = (current_point + 1) % array_length(patrol_points);
                 target_x = patrol_points[current_point].x;
                 target_y = patrol_points[current_point].y;
                 wait_timer = patrol_points[current_point].point_wait * game_get_speed(gamespeed_fps);
                 if (patrol_points[current_point].point_wait > 0) {
-                    pre_wait_timer = 0.5 * game_get_speed(gamespeed_fps); // Only rotate if waiting
+                    pre_wait_timer = 0.5 * game_get_speed(gamespeed_fps);
                 } else {
                     pre_wait_timer = 0;
                 }
@@ -118,7 +119,6 @@ case "patrol":
                 }
             }
         } else {
-            // Move toward the current target
             if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
                 path_start(path, patrol_speed, path_action_stop, false);
                 var next_x = path_get_x(path, min(path_position + 0.1, 1));
