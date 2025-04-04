@@ -225,3 +225,4 @@ if (ammo_current >= 0) {
 
 draw_set_color(c_white);
 draw_set_alpha(1.0);
+

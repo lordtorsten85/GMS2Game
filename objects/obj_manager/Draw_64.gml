@@ -1,4 +1,5 @@
 // obj_manager - Draw GUI
+ 
 with (obj_inventory) {
     if (is_open) {
         var padding = 24;

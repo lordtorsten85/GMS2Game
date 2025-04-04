@@ -1,11 +1,7 @@
 {
   "$GMObject":"",
   "%Name":"obj_proximity_door_horizontal_desert",
-  "eventList":[
-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":0,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":3,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":7,"eventType":7,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
-  ],
+  "eventList":[],
   "managed":true,
   "name":"obj_proximity_door_horizontal_desert",
   "overriddenProperties":[],
@@ -14,8 +10,8 @@
     "path":"folders/Objects/Level.yy",
   },
   "parentObjectId":{
-    "name":"obj_collision_parent",
-    "path":"objects/obj_collision_parent/obj_collision_parent.yy",
+    "name":"obj_proximity_door",
+    "path":"objects/obj_proximity_door/obj_proximity_door.yy",
   },
   "persistent":false,
   "physicsAngularDamping":0.1,

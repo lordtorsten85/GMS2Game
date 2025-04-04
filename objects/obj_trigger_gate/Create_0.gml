@@ -1,25 +1,33 @@
-/// obj_trigger_gate is an example of an item linked with an obj_green_keycard_console
-// has a string variable definition "my_tag" which is used to link it with a console
-// in the room editor so its events are triggered by only one console
 /// obj_trigger_gate - Create
 event_inherited();
 state = "closed";
-
 image_speed = 0;
+image_index = 0;
 
-solid = true; // So the player can’t walk through if you use collision logic
+collision_active = true; // Blocks player and grid when closed
+locked = true; // Set to true in room editor for locked gates
+
+// Only locked gates block the grid initially
+if (locked) {
+    mp_grid_add_rectangle(global.mp_grid, 
+        x - sprite_width/2, y - sprite_height/2, 
+        x + sprite_width/2, y + sprite_height/2);
+} else {
+    mp_grid_clear_rectangle(global.mp_grid, 
+        x - sprite_width/2, y - sprite_height/2, 
+        x + sprite_width/2, y + sprite_height/2);
+}
 
 function Activate() {
-    // Speed up the animation
-	image_index = 0;
-    image_speed = image_number/30;
-	state = "opening";
+    if (state == "closed" || state == "closing") {
+        image_speed = 1;
+        state = "opening";
+    }
 }
 
 function Deactivate() {
-    // Speed up the animation
-	image_index = 6;
-    image_speed = image_number/30 * -1;
-	show_debug_message(image_index);
-    state = "closing";
+    if (state == "open" || state == "opening") {
+        image_speed = -1;
+        state = "closing";
+    }
 }

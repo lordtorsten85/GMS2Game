@@ -28,6 +28,8 @@
   "properties":[
     {"$GMObjectProperty":"v1","%Name":"point_owner","filters":[],"listItems":[],"multiselect":false,"name":"point_owner","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"\"\"","varType":2,},
     {"$GMObjectProperty":"v1","%Name":"point_index","filters":[],"listItems":[],"multiselect":false,"name":"point_index","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"0","varType":0,},
+    {"$GMObjectProperty":"v1","%Name":"point_wait","filters":[],"listItems":[],"multiselect":false,"name":"point_wait","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"0","varType":0,},
+    {"$GMObjectProperty":"v1","%Name":"wait_direction","filters":[],"listItems":[],"multiselect":false,"name":"wait_direction","rangeEnabled":false,"rangeMax":10.0,"rangeMin":0.0,"resourceType":"GMObjectProperty","resourceVersion":"2.0","value":"none","varType":2,},
   ],
   "resourceType":"GMObject",
   "resourceVersion":"2.0",

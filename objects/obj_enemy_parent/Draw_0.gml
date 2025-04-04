@@ -1,6 +1,4 @@
 // obj_enemy_parent - Draw Event
-// Description: Draws the enemy sprite, segmented detection cone clipped by active collisions, and centered alert icon.
-//mp_grid_draw(grid);
 draw_self();
 
 var cone_color;
@@ -28,12 +26,20 @@ for (var i = -cone_angle_half; i <= cone_angle_half; i += step) {
     var draw_x = target_x;
     var draw_y = target_y;
     
+    // Check for collision with obj_collision_parent (includes doors)
     var hit = collision_line(x, y, target_x, target_y, obj_collision_parent, false, true);
     if (hit != noone) {
         var is_active = true;
-        if (variable_instance_exists(hit, "collision_active")) {
-            is_active = hit.collision_active;
-        }
+        // Check if it’s a door and adjust based on its state
+        if (object_is_ancestor(hit.object_index, obj_proximity_door) || hit.object_index == obj_proximity_door) {
+            // Door is considered "active" (blocks vision) if closed
+            if (variable_instance_exists(hit, "locked") && hit.locked) {
+                is_active = hit.collision_active; // Locked doors use collision_active
+            } else {
+                is_active = (hit.image_index < hit.image_number - 1); // Unlocked doors use animation state
+            }
+        } // Non-door collisions (e.g., walls) are always active unless they have collision_active
+        
         if (is_active) {
             var dist = point_distance(x, y, target_x, target_y);
             var step_size = 4;
@@ -43,14 +49,24 @@ for (var i = -cone_angle_half; i <= cone_angle_half; i += step) {
                 var check_x = x + lengthdir_x(check_dist, dir);
                 var check_y = y + lengthdir_y(check_dist, dir);
                 var point_hit = collision_point(check_x, check_y, obj_collision_parent, false, true);
-                if (point_hit != noone && variable_instance_exists(point_hit, "collision_active") && point_hit.collision_active) {
-                    draw_x = x + lengthdir_x(check_dist - step_size, dir);
-                    draw_y = y + lengthdir_y(check_dist - step_size, dir);
-                    break;
-                }
-                if (j == steps) {
-                    draw_x = target_x;
-                    draw_y = target_y;
+                if (point_hit != noone) {
+                    var point_active = true;
+                    if (object_is_ancestor(point_hit.object_index, obj_proximity_door) || point_hit.object_index == obj_proximity_door) {
+                        if (variable_instance_exists(point_hit, "locked") && point_hit.locked) {
+                            point_active = point_hit.collision_active;
+                        } else {
+                            point_active = (point_hit.image_index < point_hit.image_number - 1);
+                        }
+                    }
+                    if (point_active) {
+                        draw_x = x + lengthdir_x(check_dist - step_size, dir);
+                        draw_y = y + lengthdir_y(check_dist - step_size, dir);
+                        break;
+                    }
+                    if (j == steps) {
+                        draw_x = target_x;
+                        draw_y = target_y;
+                    }
                 }
             }
         }
@@ -65,7 +81,7 @@ draw_set_color(c_white);
 
 // Draw centered alert icon if active
 if (alert_icon_timer > 0) {
-    var icon_x = x - (sprite_get_width(spr_enemy_alert) * alert_icon_scale / 2); // Center horizontally
+    var icon_x = x - (sprite_get_width(spr_enemy_alert) * alert_icon_scale / 2);
     var icon_y = y - sprite_height - 10;
     draw_sprite_ext(spr_enemy_alert, 0, icon_x, icon_y, alert_icon_scale, alert_icon_scale, 0, c_white, alert_icon_alpha);
     alert_icon_scale = max(1, alert_icon_scale - 0.02);

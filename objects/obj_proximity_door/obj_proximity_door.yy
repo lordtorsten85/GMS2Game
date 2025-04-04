@@ -1,12 +1,12 @@
 {
   "$GMObject":"",
-  "%Name":"obj_gate",
+  "%Name":"obj_proximity_door",
   "eventList":[
-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":0,"isDnD":true,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":7,"eventType":7,"isDnD":true,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":0,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":3,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
   ],
   "managed":true,
-  "name":"obj_gate",
+  "name":"obj_proximity_door",
   "overriddenProperties":[],
   "parent":{
     "name":"Level",
@@ -32,11 +32,8 @@
   "properties":[],
   "resourceType":"GMObject",
   "resourceVersion":"2.0",
-  "solid":false,
-  "spriteId":{
-    "name":"spr_gate_iron_2",
-    "path":"sprites/spr_gate_iron_2/spr_gate_iron_2.yy",
-  },
+  "solid":true,
+  "spriteId":null,
   "spriteMaskId":null,
   "visible":true,
 }

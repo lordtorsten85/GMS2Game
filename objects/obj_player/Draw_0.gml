@@ -66,3 +66,4 @@ if (nearest_item_to_pickup != noone && instance_exists(nearest_item_to_pickup)) 
 // Reset drawing settings to defaults at the end
 draw_set_color(c_white);
 draw_set_alpha(1.0);
+

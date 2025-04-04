@@ -1,6 +1,3 @@
-// Object: obj_enemy_parent
-// Event: Clean Up
-// Description: Frees resources when instance is destroyed.
-
+// obj_enemy_parent - Clean Up Event
 path_delete(path);
-if (grid != noone) mp_grid_destroy(grid);
+// Don’t destroy grid since it’s global now
