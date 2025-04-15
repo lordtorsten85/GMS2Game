@@ -60,13 +60,6 @@ if (instance_exists(obj_player)) {
     }
 }
 
-// Debug distance to nearest door
-if (instance_exists(obj_proximity_door_horizontal_desert)) { // Replace obj_door with your door object name
-    var nearest_door = instance_nearest(x, y, obj_proximity_door_horizontal_desert);
-    var door_dist = point_distance(x, y, nearest_door.x, nearest_door.y);
-    show_debug_message(point_owner + " distance to door: " + string(door_dist) + " | State: " + state);
-}
-
 switch (state) {
 case "patrol":
     if (instance_exists(obj_manager) && obj_manager.enemies_alerted && instance_exists(obj_player)) {
@@ -84,7 +77,7 @@ case "patrol":
         path_delete(temp_path);
     } else if (array_length(patrol_points) > 0) {
         if (point_distance(x, y, target_x, target_y) <= patrol_speed || path_position == 1) {
-            show_debug_message(point_owner + " at point " + string(current_point) + " | Pre-wait: " + string(pre_wait_timer) + " | Wait: " + string(wait_timer / game_get_speed(gamespeed_fps)) + " seconds");
+            //show_debug_message(point_owner + " at point " + string(current_point) + " | Pre-wait: " + string(pre_wait_timer) + " | Wait: " + string(wait_timer / game_get_speed(gamespeed_fps)) + " seconds");
             if (pre_wait_timer > 0) {
                 pre_wait_timer--;
                 var target_dir = facing_direction;
