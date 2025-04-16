@@ -70,9 +70,9 @@ case "patrol":
             alert_icon_timer = 60;
             alert_icon_scale = 1.5;
             alert_icon_alpha = 1;
-            show_debug_message(point_owner + " alerted and chasing - path found");
+            //show_debug_message(point_owner + " alerted and chasing - path found");
         } else {
-            show_debug_message(point_owner + " alerted but no path to player - staying in patrol");
+            //show_debug_message(point_owner + " alerted but no path to player - staying in patrol");
         }
         path_delete(temp_path);
     } else if (array_length(patrol_points) > 0) {
@@ -106,9 +106,9 @@ case "patrol":
                 path_end();
                 if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
                     path_start(path, patrol_speed, path_action_stop, false);
-                    show_debug_message(point_owner + " moving to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
+                    //show_debug_message(point_owner + " moving to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
                 } else {
-                    show_debug_message(point_owner + " cannot path to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
+                   // show_debug_message(point_owner + " cannot path to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
                 }
             }
         } else {
@@ -119,7 +119,7 @@ case "patrol":
                 facing_direction = angle_lerp(facing_direction, point_direction(x, y, next_x, next_y), 0.1);
             } else {
                 path_end();
-                show_debug_message(point_owner + " patrol path blocked");
+                //show_debug_message(point_owner + " patrol path blocked");
             }
         }
     }
@@ -169,7 +169,7 @@ case "patrol":
                     facing_direction = angle_lerp(facing_direction, point_direction(x, y, obj_player.x, obj_player.y), 0.1);
                 } else {
                     path_end();
-                    show_debug_message(point_owner + " chase path blocked");
+                    //show_debug_message(point_owner + " chase path blocked");
                 }
             }
             last_player_x = obj_player.x;
@@ -239,7 +239,7 @@ case "patrol":
             if (attempts > 10) {
                 target_x = x;
                 target_y = y;
-                show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
+                //show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
             }
             search_pause_timer = 180;
         }
@@ -250,7 +250,7 @@ case "patrol":
         facing_direction = angle_lerp(facing_direction, point_direction(x, y, next_x, next_y), 0.1);
     } else {
         path_end();
-        show_debug_message(point_owner + " search path blocked");
+       // show_debug_message(point_owner + " search path blocked");
         target_x = x;
         target_y = y;
         search_pause_timer = 0;
