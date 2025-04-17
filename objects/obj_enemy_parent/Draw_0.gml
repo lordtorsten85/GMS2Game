@@ -1,4 +1,13 @@
 // obj_enemy_parent - Draw Event
+// Description: Draws the enemy sprite with vision cone, alert icon, and stun flashing effect.
+
+// Handle stun flashing
+if (state == "stunned" && stun_flash_timer > 5) {
+    image_alpha = 0.5; // Dim sprite during flash
+} else {
+    image_alpha = 1; // Normal opacity
+}
+
 draw_self();
 
 var cone_color;
@@ -7,6 +16,7 @@ switch (state) {
     case "chase": cone_color = c_red; break;
     case "attack": cone_color = c_red; break;
     case "search": cone_color = c_yellow; break;
+    case "stunned": cone_color = c_blue; break; // Blue for stun
     default: cone_color = c_green;
 }
 
@@ -34,7 +44,7 @@ for (var i = -cone_angle_half; i <= cone_angle_half; i += step) {
         if (object_is_ancestor(hit.object_index, obj_proximity_door) || hit.object_index == obj_proximity_door) {
             // Door is considered "active" (blocks vision) if closed
             if (variable_instance_exists(hit, "locked") && hit.locked) {
-                is_active = hit.collision_active; // Locked doors use collision_active
+                is_active = !hit.solid; // Locked doors use collision_active
             } else {
                 is_active = (hit.image_index < hit.image_number - 1); // Unlocked doors use animation state
             }
@@ -53,7 +63,7 @@ for (var i = -cone_angle_half; i <= cone_angle_half; i += step) {
                     var point_active = true;
                     if (object_is_ancestor(point_hit.object_index, obj_proximity_door) || point_hit.object_index == obj_proximity_door) {
                         if (variable_instance_exists(point_hit, "locked") && point_hit.locked) {
-                            point_active = point_hit.collision_active;
+                            point_active = point_hit.solid;
                         } else {
                             point_active = (point_hit.image_index < point_hit.image_number - 1);
                         }

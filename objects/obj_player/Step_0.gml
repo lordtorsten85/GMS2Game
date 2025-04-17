@@ -17,8 +17,28 @@ if (!is_punching) {
     if (h_input != 0 || v_input != 0) {
         var dir = point_direction(0, 0, h_input, v_input);
         input_direction = dir;
-        x += lengthdir_x(move_speed, dir);
-        y += lengthdir_y(move_speed, dir);
+        
+        // Separate horizontal and vertical movement for sliding
+        var h_speed = h_input * move_speed;
+        var v_speed = v_input * move_speed;
+        
+        // Apply horizontal movement
+        var prev_x = x;
+        x += h_speed;
+        // Check for collision and respect the solid variable
+        var inst = instance_place(x, y, obj_collision_parent);
+        if (inst != noone && inst.solid) {
+            x = prev_x;
+        }
+        
+        // Apply vertical movement
+        var prev_y = y;
+        y += v_speed;
+        // Check for collision and respect the solid variable
+        inst = instance_place(x, y, obj_collision_parent);
+        if (inst != noone && inst.solid) {
+            y = prev_y;
+        }
         
         // Update last_direction based on primary input
         if (abs(v_input) > abs(h_input)) {
@@ -83,13 +103,20 @@ if (is_punching && (sprite_index == spr_rattler_punch || sprite_index == spr_rat
     // Store hitbox for debug drawing
     punch_hitbox = { x: punch_x, y: punch_y, size: 8 }; // Size is half-width of hitbox
     
-    // Check for full-extension frame (frame 3, adjust as needed)
+    // Check for full-extension frame (frame 5, adjust as needed)
     if (image_index == 5 && !has_hit) {
         var enemy_hit = instance_place(punch_x, punch_y, obj_enemy_parent);
         if (enemy_hit != noone) {
             enemy_hit.hp -= melee_damage;
+            // Trigger stun
+            enemy_hit.state = "stunned";
+            enemy_hit.stunned = true;
+            enemy_hit.stun_timer = 30; // 0.5 seconds at 60 FPS
+            enemy_hit.stun_flash_timer = 10; // Start flashing (10 steps per cycle)
+            // Play stun sound
+            audio_play_sound(snd_chest_open, 0, 0, 1.0, undefined, 1.0);
             has_hit = true; // Prevent multiple hits
-            show_debug_message("Hit enemy for " + string(melee_damage) + " damage, enemy HP: " + string(enemy_hit.hp));
+            show_debug_message("Punched enemy for " + string(melee_damage) + " damage, enemy HP: " + string(enemy_hit.hp));
             // Spawn particle effect at hit location
             part_particles_create(part_system, punch_hitbox.x, punch_hitbox.y, part_type, 8); // Emit 8 particles
             // Trigger enemy alert
@@ -252,4 +279,10 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
         }
     }
     nearest_item_to_pickup = noone;
+}
+
+if (keyboard_check_pressed(ord("I")))
+{
+	with (obj_proximity_door)
+	locked = false;
 }

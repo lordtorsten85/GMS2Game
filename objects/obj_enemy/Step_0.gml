@@ -1,7 +1,7 @@
 // obj_enemy - Step Event
-// Description: Updates sprite direction, handles damage, and implements melee attack behavior.
+// Description: Updates sprite direction, animation, and checks for death.
 
-event_inherited();
+event_inherited(); // Inherit from obj_enemy_parent
 
 image_xscale = (facing_direction > 90 && facing_direction < 270) ? -1 : 1;
 
@@ -11,15 +11,8 @@ if (state == "chase") {
     image_speed = 0.4;
 } else if (state == "attack") {
     image_speed = 0.5;
-}
-
-if (state == "attack" && is_attacking) {
-    var player_dist = point_distance(x, y, obj_player.x, obj_player.y);
-    if (player_dist <= attack_range + 4) { // Align with parent’s attack_range (56 + 4 = 60 pixels)
-        obj_manager.health_current -= 10;
-        effect_create_above(4, obj_player.x, obj_player.y, 1, c_white);
-        is_attacking = false;
-    }
+} else if (state == "stunned") {
+    image_speed = 0; // Freeze animation during stun
 }
 
 if (hp <= 0) {

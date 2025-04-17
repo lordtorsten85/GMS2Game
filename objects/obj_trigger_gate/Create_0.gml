@@ -1,10 +1,11 @@
-/// obj_trigger_gate - Create
-event_inherited();
+//obj_trigger_gate Create Event
+
+event_inherited(); // Inherit from obj_collision_parent
+
 state = "closed";
 image_speed = 0;
 image_index = 0;
 
-collision_active = true; // Blocks player and grid when closed
 locked = true; // Set to true in room editor for locked gates
 
 // Only locked gates block the grid initially
