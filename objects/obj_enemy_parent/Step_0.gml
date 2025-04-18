@@ -124,32 +124,69 @@ case "patrol":
             } else if (wait_timer > 0) {
                 wait_timer--;
             } else {
-                current_point = (current_point + 1) % array_length(patrol_points);
-                target_x = patrol_points[current_point].x;
-                target_y = patrol_points[current_point].y;
-                wait_timer = patrol_points[current_point].point_wait * game_get_speed(gamespeed_fps);
-                if (patrol_points[current_point].point_wait > 0) {
-                    pre_wait_timer = 0.5 * game_get_speed(gamespeed_fps);
-                } else {
-                    pre_wait_timer = 0;
+                // Find all reachable nav points
+                var reachable_points = [];
+                var temp_path = path_add();
+                for (var i = 0; i < array_length(patrol_points); i++) {
+                    var test_point = i;
+                    var test_x = patrol_points[test_point].x;
+                    var test_y = patrol_points[test_point].y;
+                    if (mp_grid_path(grid, temp_path, x, y, test_x, test_y, true)) {
+                        array_push(reachable_points, test_point);
+                    }
                 }
-                path_end();
-                if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
-                    path_start(path, patrol_speed, path_action_stop, false); // Nav points are not solid
-                    //show_debug_message(point_owner + " moving to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
+                path_delete(temp_path);
+                show_debug_message("Enemy " + point_owner + " reachable points: " + string(reachable_points));
+                
+                if (array_length(reachable_points) > 0) {
+                    // Determine the next reachable nav point
+                    var next_point = current_point;
+                    var found = false;
+                    for (var i = 0; i < array_length(reachable_points); i++) {
+                        var test_point = reachable_points[i];
+                        if (test_point > current_point) {
+                            next_point = test_point;
+                            found = true;
+                            break;
+                        }
+                    }
+                    
+                    // If no point found ahead, wrap around to the first reachable point
+                    if (!found) {
+                        next_point = reachable_points[0];
+                    }
+                    
+                    current_point = next_point;
+                    target_x = patrol_points[current_point].x;
+                    target_y = patrol_points[current_point].y;
+                    wait_timer = patrol_points[current_point].point_wait * game_get_speed(gamespeed_fps);
+                    if (patrol_points[current_point].point_wait > 0) {
+                        pre_wait_timer = 0.5 * game_get_speed(gamespeed_fps);
+                    } else {
+                        pre_wait_timer = 0;
+                    }
+                    path_end();
+                    if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+                        path_start(path, patrol_speed, path_action_stop, false);
+                        //show_debug_message(point_owner + " moving to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
+                    } else {
+                        show_debug_message(point_owner + " cannot path to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
+                    }
                 } else {
-                    //show_debug_message(point_owner + " cannot path to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
+                    // No reachable nav points; stay at current position
+                    show_debug_message(point_owner + " cannot reach any nav point; staying at point " + string(current_point));
+                    path_end();
                 }
             }
         } else {
             if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
-                path_start(path, patrol_speed, path_action_stop, false); // Nav points are not solid
+                path_start(path, patrol_speed, path_action_stop, false);
                 var next_x = path_get_x(path, min(path_position + 0.1, 1));
                 var next_y = path_get_y(path, min(path_position + 0.1, 1));
                 facing_direction = angle_lerp(facing_direction, point_direction(x, y, next_x, next_y), 0.1);
             } else {
+                show_debug_message(point_owner + " cannot path to point " + string(current_point) + " at " + string(target_x) + "," + string(target_y));
                 path_end();
-                //show_debug_message(point_owner + " patrol path blocked");
             }
         }
     }
@@ -300,49 +337,49 @@ case "patrol":
         break;
 
     case "search":
-    if (path_position >= 1 || point_distance(x, y, target_x, target_y) <= patrol_speed * 2) {
-        path_end();
-        if (search_pause_timer > 0) {
-            search_pause_timer--;
-        } else {
-            var attempts = 0;
-            do {
-                var angle = irandom(360);
-                var dist = irandom_range(32, 256);
-                target_x = last_player_x + lengthdir_x(dist, angle);
-                target_y = last_player_y + lengthdir_y(dist, angle);
-                target_x = round(target_x / 32) * 32;
-                target_y = round(target_y / 32) * 32;
-                attempts++;
-            } until (mp_grid_path(grid, path, x, y, target_x, target_y, true) || attempts > 10);
-            if (attempts > 10) {
-                target_x = x;
-                target_y = y;
-                //show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
+        if (path_position >= 1 || point_distance(x, y, target_x, target_y) <= patrol_speed * 2) {
+            path_end();
+            if (search_pause_timer > 0) {
+                search_pause_timer--;
+            } else {
+                var attempts = 0;
+                do {
+                    var angle = irandom(360);
+                    var dist = irandom_range(32, 256);
+                    target_x = last_player_x + lengthdir_x(dist, angle);
+                    target_y = last_player_y + lengthdir_y(dist, angle);
+                    target_x = round(target_x / 32) * 32;
+                    target_y = round(target_y / 32) * 32;
+                    attempts++;
+                } until (mp_grid_path(grid, path, x, y, target_x, target_y, true) || attempts > 10);
+                if (attempts > 10) {
+                    target_x = x;
+                    target_y = y;
+                    //show_debug_message(point_owner + " couldn’t find a searchable spot near last position");
+                }
+                search_pause_timer = 180;
             }
-            search_pause_timer = 180;
+        } else if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
+            path_start(path, patrol_speed, path_action_stop, true); // Respect solid objects
+            var next_x = path_get_x(path, min(path_position + 0.1, 1));
+            var next_y = path_get_y(path, min(path_position + 0.1, 1));
+            facing_direction = angle_lerp(facing_direction, point_direction(x, y, next_x, next_y), 0.1);
+        } else {
+            path_end();
+            //show_debug_message(point_owner + " search path blocked");
+            target_x = x;
+            target_y = y;
+            search_pause_timer = 0;
         }
-    } else if (mp_grid_path(grid, path, x, y, target_x, target_y, true)) {
-        path_start(path, patrol_speed, path_action_stop, true); // Respect solid objects
-        var next_x = path_get_x(path, min(path_position + 0.1, 1));
-        var next_y = path_get_y(path, min(path_position + 0.1, 1));
-        facing_direction = angle_lerp(facing_direction, point_direction(x, y, next_x, next_y), 0.1);
-    } else {
-        path_end();
-        //show_debug_message(point_owner + " search path blocked");
-        target_x = x;
-        target_y = y;
-        search_pause_timer = 0;
-    }
-    search_timer--;
-    if (search_timer <= 0 && !player_spotted) {
-        state = "patrol";
-        path_end();
-        if (array_length(patrol_points) > 0) {
-            target_x = patrol_points[current_point].x;
-            target_y = patrol_points[current_point].y;
+        search_timer--;
+        if (search_timer <= 0 && !player_spotted) {
+            state = "patrol";
+            path_end();
+            if (array_length(patrol_points) > 0) {
+                target_x = patrol_points[current_point].x;
+                target_y = patrol_points[current_point].y;
+            }
+            has_alerted = false; // Reset alert animation state when returning to patrol
         }
-        has_alerted = false; // Reset alert animation state when returning to patrol
-    }
-    break;
+        break;
 }

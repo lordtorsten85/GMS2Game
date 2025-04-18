@@ -1,1 +1,1 @@
-if (other != self) {instance_destroy();}
+//if (other != self) {instance_destroy();}

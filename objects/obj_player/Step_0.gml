@@ -281,8 +281,11 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
     nearest_item_to_pickup = noone;
 }
 
-if (keyboard_check_pressed(ord("I")))
-{
-	with (obj_proximity_door)
-	locked = false;
+if (keyboard_check_pressed(ord("I"))) {
+    with (obj_proximity_door) {
+		if (locked)
+		{
+			unlock();
+		}
+	}
 }

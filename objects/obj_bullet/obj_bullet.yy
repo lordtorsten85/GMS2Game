@@ -30,7 +30,7 @@
   "properties":[],
   "resourceType":"GMObject",
   "resourceVersion":"2.0",
-  "solid":false,
+  "solid":true,
   "spriteId":{
     "name":"spr_projectile_base",
     "path":"sprites/spr_projectile_base/spr_projectile_base.yy",
