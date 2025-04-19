@@ -1,14 +1,23 @@
 // obj_player - Create Event
-// Initializes player properties, including movement speed and inventory attachment.
-// Makes the player persistent across rooms for continuity.
+// Description: Initializes player properties, movement speed, inventory attachment, and crouch state
+// Variable Definitions (set in object editor):
+// - coins - real - Player's coin count
+// - move_speed - real - Base movement speed (pixels per frame, e.g., 3)
+// - input_direction - real - Current movement direction (degrees)
+// - depth - real - Rendering depth (e.g., -12210)
+// - nearest_item_to_pickup - real - Nearest obj_item instance for pickup
+// - pickup_cooldown - real - Cooldown timer for item pickup
+// - melee_damage - real - Punching damage (e.g., 5)
 
 persistent = true; // Persist across rooms
 move_speed = 3; // Movement speed in pixels per frame
 default_move_speed = move_speed; // Store default speed
+crouch_speed = move_speed * 0.5; // 50% speed when crouching
 input_direction = 0; // Initial movement direction
 depth = -12210;
 nearest_item_to_pickup = noone; // Tracks the nearest item instance
 pickup_cooldown = 0; // Optional cooldown timer
+is_crouching = false; // False = walking, True = prone
 
 // Punching setup
 last_xscale = 1;

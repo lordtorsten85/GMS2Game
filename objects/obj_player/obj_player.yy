@@ -44,9 +44,6 @@
     "name":"spr_rattler_idle",
     "path":"sprites/spr_rattler_idle/spr_rattler_idle.yy",
   },
-  "spriteMaskId":{
-    "name":"spr_rattler_idle",
-    "path":"sprites/spr_rattler_idle/spr_rattler_idle.yy",
-  },
+  "spriteMaskId":null,
   "visible":true,
 }

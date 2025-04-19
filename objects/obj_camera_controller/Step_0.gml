@@ -1,14 +1,20 @@
 // obj_camera_controller - Step Event
-// Centers the camera on the player, clamping to room boundaries to prevent viewing outside.
+// Description: Smoothly follows the player with interpolated camera movement, clamped to room boundaries
 
-// Follow the player and center the camera on them
 if (instance_exists(obj_player)) {
     var px = obj_player.x;
     var py = obj_player.y;
 
-    // Calculate camera position to center on player
-    var cam_x = px - global.cam_width / 2;
-    var cam_y = py - global.cam_height / 2;
+    // Calculate target camera position to center on player
+    var target_cam_x = px - global.cam_width / 2;
+    var target_cam_y = py - global.cam_height / 2;
+
+    // Interpolate current camera position towards target
+    var current_cam_x = camera_get_view_x(global.cam);
+    var current_cam_y = camera_get_view_y(global.cam);
+    var lerp_factor = 0.1; // Smoothing factor (0.1 = 10% per step)
+    var cam_x = lerp(current_cam_x, target_cam_x, lerp_factor);
+    var cam_y = lerp(current_cam_y, target_cam_y, lerp_factor);
 
     // Clamp camera to room boundaries
     cam_x = clamp(cam_x, 0, room_width - global.cam_width);

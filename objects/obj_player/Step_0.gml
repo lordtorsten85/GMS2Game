@@ -1,31 +1,109 @@
-// obj_player Step Event
+// obj_player - Step Event
+// Description: Handles player movement, crouch toggle, collision push, punching, shooting, item pickup, and sprite animation
 
 var pickup_range = 48;
 
 // Initialize state if not exists
 if (!variable_instance_exists(id, "is_punching")) is_punching = false;
-if (!variable_instance_exists(id, "last_xscale")) last_xscale = 1; // Track last facing direction for left/right
-if (!variable_instance_exists(id, "last_direction")) last_direction = 0; // Track last movement direction (0:right, 90:up, 180:left, 270:down)
-if (!variable_instance_exists(id, "has_hit")) has_hit = false; // Track if punch has applied damage
+if (!variable_instance_exists(id, "last_xscale")) last_xscale = 1;
+if (!variable_instance_exists(id, "last_direction")) last_direction = 0;
+if (!variable_instance_exists(id, "has_hit")) has_hit = false;
+if (!variable_instance_exists(id, "is_crouching")) is_crouching = false;
+
+// Toggle crouch mode with Ctrl (only if not punching)
+if (keyboard_check_pressed(vk_control) && !is_punching) {
+    var was_crouching = is_crouching;
+    is_crouching = !is_crouching;
+    
+    // If switching to prone, check for collisions and push player away
+    if (is_crouching && !was_crouching) {
+        // Temporarily set sprite to prone for collision check
+        var temp_sprite = sprite_index;
+        if (last_direction == 90) {
+            sprite_index = spr_rattler_prone_up_idle;
+        } else if (last_direction == 270) {
+            sprite_index = spr_rattler_prone_down_idle;
+        } else {
+            sprite_index = spr_rattler_prone_side_idle;
+        }
+        
+        // Check for collision with obj_collision_parent
+        var col = instance_place(x, y, obj_collision_parent);
+        if (col != noone && col.solid) {
+            var push_speed = 2; // Pixels per step to push
+            var max_attempts = 13; // Enough to cover 26 pixels (26/2 = 13)
+            var attempts = 0;
+            var start_x = x;
+            var start_y = y;
+            
+            // Prioritize downward push when facing up (last_direction = 90)
+            if (last_direction == 90) {
+                // Push downward (180 degrees) to clear 26-pixel mask extension
+                while (instance_place(x, y, obj_collision_parent) != noone && attempts < max_attempts) {
+                    y += push_speed; // Move downward
+                    attempts++;
+                }
+            } else {
+                // For other directions, push away from collision center
+                var push_dir = point_direction(col.x, col.y, x, y);
+                while (instance_place(x, y, obj_collision_parent) != noone && attempts < max_attempts) {
+                    x += lengthdir_x(push_speed, push_dir);
+                    y += lengthdir_y(push_speed, push_dir);
+                    attempts++;
+                }
+            }
+            
+            // If still stuck, try alternative directions (0, 90, 180, 270)
+            if (instance_place(x, y, obj_collision_parent) != noone) {
+                var directions = [0, 90, 180, 270];
+                var i = 0;
+                attempts = 0;
+                x = start_x;
+                y = start_y;
+                while (i < array_length(directions) && instance_place(x, y, obj_collision_parent) != noone && attempts < max_attempts) {
+                    var push_dir = directions[i];
+                    x = start_x + lengthdir_x(push_speed, push_dir);
+                    y = start_y + lengthdir_y(push_speed, push_dir);
+                    attempts++;
+                    if (instance_place(x, y, obj_collision_parent) == noone) {
+                        break;
+                    }
+                    i++;
+                }
+            }
+            
+            // If still stuck after all attempts, revert to walking
+            if (instance_place(x, y, obj_collision_parent) != noone) {
+                is_crouching = false;
+                x = start_x;
+                y = start_y;
+            }
+        }
+        
+        // Restore sprite (animation logic below will set it correctly)
+        sprite_index = temp_sprite;
+    }
+}
 
 // Declare input variables
 var h_input = (keyboard_check(vk_right) || keyboard_check(ord("D"))) - (keyboard_check(vk_left) || keyboard_check(ord("A")));
 var v_input = (keyboard_check(vk_down) || keyboard_check(ord("S"))) - (keyboard_check(vk_up) || keyboard_check(ord("W")));
+var moving = (h_input != 0 || v_input != 0);
 
 // Movement with arrow keys and WASD, only if not punching
 if (!is_punching) {
+    var current_speed = is_crouching ? crouch_speed : move_speed;
     if (h_input != 0 || v_input != 0) {
         var dir = point_direction(0, 0, h_input, v_input);
         input_direction = dir;
         
         // Separate horizontal and vertical movement for sliding
-        var h_speed = h_input * move_speed;
-        var v_speed = v_input * move_speed;
+        var h_speed = h_input * current_speed;
+        var v_speed = v_input * current_speed;
         
         // Apply horizontal movement
         var prev_x = x;
         x += h_speed;
-        // Check for collision and respect the solid variable
         var inst = instance_place(x, y, obj_collision_parent);
         if (inst != noone && inst.solid) {
             x = prev_x;
@@ -34,7 +112,6 @@ if (!is_punching) {
         // Apply vertical movement
         var prev_y = y;
         y += v_speed;
-        // Check for collision and respect the solid variable
         inst = instance_place(x, y, obj_collision_parent);
         if (inst != noone && inst.solid) {
             y = prev_y;
@@ -51,90 +128,151 @@ if (!is_punching) {
 
 // Update movement sprites if not punching
 if (!is_punching) {
-    if (h_input != 0 || v_input != 0) {
-        // Prioritize vertical movement for sprite (including diagonals)
-        if (v_input < 0) {
-            sprite_index = spr_rattler_run_up;
-            image_xscale = 1;
-            image_yscale = 1;
-        } else if (v_input > 0) {
-            sprite_index = spr_rattler_run_down;
-            image_xscale = 1;
-            image_yscale = 1;
-        } else if (h_input != 0) {
-            sprite_index = spr_rattler_walk;
-            image_xscale = (h_input > 0) ? 1 : -1;
-            last_xscale = image_xscale; // Update facing direction for left/right
-            image_yscale = 1;
+    var prev_sprite = sprite_index; // Track sprite for collision check
+    if (is_crouching) {
+        if (moving) {
+            if (v_input < 0) { // Prioritize up
+                sprite_index = spr_rattler_prone_up_crawl;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else if (v_input > 0) { // Prioritize down
+                sprite_index = spr_rattler_prone_down_crawl;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else if (h_input != 0) { // Side only if no vertical input
+                sprite_index = spr_rattler_prone_side_crawl;
+                image_xscale = (h_input > 0) ? 1 : -1;
+                last_xscale = image_xscale;
+                image_yscale = 1;
+            }
+        } else {
+            if (last_direction == 90) {
+                sprite_index = spr_rattler_prone_up_idle;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else if (last_direction == 270) {
+                sprite_index = spr_rattler_prone_down_idle;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else {
+                sprite_index = spr_rattler_prone_side_idle;
+                image_xscale = (last_direction == 0) ? 1 : -1;
+                last_xscale = image_xscale;
+                image_yscale = 1;
+            }
+        }
+        image_speed = moving ? 0.6 : 0.3; // 0.3 for crawling, 0.15 for prone idle
+        
+        // Check for collisions after sprite change in prone mode
+        if (sprite_index != prev_sprite && moving) {
+            var col = instance_place(x, y, obj_collision_parent);
+            if (col != noone && col.solid) {
+                var push_speed = 2; // Pixels per step to push
+                var max_attempts = 13; // Enough to cover 26 pixels (26/2 = 13)
+                var attempts = 0;
+                var start_x = x;
+                var start_y = y;
+                
+                // Prioritize downward push when switching to spr_rattler_prone_up_crawl
+                if (sprite_index == spr_rattler_prone_up_crawl) {
+                    // Push downward (180 degrees) to clear 26-pixel mask extension
+                    while (instance_place(x, y, obj_collision_parent) != noone && attempts < max_attempts) {
+                        y += push_speed; // Move downward
+                        attempts++;
+                    }
+                } else {
+                    // For other sprite changes, push away from collision center
+                    var push_dir = point_direction(col.x, col.y, x, y);
+                    while (instance_place(x, y, obj_collision_parent) != noone && attempts < max_attempts) {
+                        x += lengthdir_x(push_speed, push_dir);
+                        y += lengthdir_y(push_speed, push_dir);
+                        attempts++;
+                    }
+                }
+                
+                // If still stuck, revert position and sprite
+                if (instance_place(x, y, obj_collision_parent) != noone) {
+                    x = start_x;
+                    y = start_y;
+                    sprite_index = prev_sprite;
+                }
+            }
         }
     } else {
-        // Select idle sprite based on last_direction
-        if (last_direction == 90) {
-            sprite_index = spr_rattler_idle_up;
-            image_xscale = 1;
-            image_yscale = 1;
-        } else if (last_direction == 270) {
-            sprite_index = spr_rattler_idle_down;
-            image_xscale = 1;
-            image_yscale = 1;
+        if (h_input != 0 || v_input != 0) {
+            if (v_input < 0) {
+                sprite_index = spr_rattler_run_up;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else if (v_input > 0) {
+                sprite_index = spr_rattler_run_down;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else if (h_input != 0) {
+                sprite_index = spr_rattler_walk;
+                image_xscale = (h_input > 0) ? 1 : -1;
+                last_xscale = image_xscale;
+                image_yscale = 1;
+            }
         } else {
-            sprite_index = spr_rattler_idle;
-            image_xscale = last_xscale; // Use last facing direction for left/right
-            image_yscale = 1;
+            if (last_direction == 90) {
+                sprite_index = spr_rattler_idle_up;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else if (last_direction == 270) {
+                sprite_index = spr_rattler_idle_down;
+                image_xscale = 1;
+                image_yscale = 1;
+            } else {
+                sprite_index = spr_rattler_idle;
+                image_xscale = last_xscale;
+                image_yscale = 1;
+            }
         }
+        image_speed = moving ? 1.0 : 1.0; // 0.4 for walking, 0.2 for walking idle
     }
 }
 
 // Punching collision check
 if (is_punching && (sprite_index == spr_rattler_punch || sprite_index == spr_rattler_punch_up || sprite_index == spr_rattler_punch_down)) {
-    var punch_range = 32; // Adjust based on sprite size
+    var punch_range = 32;
     var punch_x = x;
     var punch_y = y;
     
-    // Adjust hitbox based on punch direction
     if (sprite_index == spr_rattler_punch) {
-        punch_x += image_xscale * 16; // Offset hitbox left/right
+        punch_x += image_xscale * 16;
     } else if (sprite_index == spr_rattler_punch_up) {
-        punch_y -= 16; // Offset hitbox up
+        punch_y -= 16;
     } else if (sprite_index == spr_rattler_punch_down) {
-        punch_y += 16; // Offset hitbox down
+        punch_y += 16;
     }
     
-    // Store hitbox for debug drawing
-    punch_hitbox = { x: punch_x, y: punch_y, size: 8 }; // Size is half-width of hitbox
+    punch_hitbox = { x: punch_x, y: punch_y, size: 8 };
     
-    // Check for full-extension frame (frame 5, adjust as needed)
     if (image_index == 5 && !has_hit) {
         var enemy_hit = instance_place(punch_x, punch_y, obj_enemy_parent);
         if (enemy_hit != noone) {
             enemy_hit.hp -= melee_damage;
-            // Trigger stun
             enemy_hit.state = "stunned";
             enemy_hit.stunned = true;
-            enemy_hit.stun_timer = 30; // 0.5 seconds at 60 FPS
-            enemy_hit.stun_flash_timer = 10; // Start flashing (10 steps per cycle)
-            // Play stun sound
+            enemy_hit.stun_timer = 30;
+            enemy_hit.stun_flash_timer = 10;
             audio_play_sound(snd_chest_open, 0, 0, 1.0, undefined, 1.0);
-            has_hit = true; // Prevent multiple hits
-            show_debug_message("Punched enemy for " + string(melee_damage) + " damage, enemy HP: " + string(enemy_hit.hp));
-            // Spawn particle effect at hit location
-            part_particles_create(part_system, punch_hitbox.x, punch_hitbox.y, part_type, 8); // Emit 8 particles
-            // Trigger enemy alert
+            has_hit = true;
+            part_particles_create(part_system, punch_hitbox.x, punch_hitbox.y, part_type, 8);
             with (obj_manager) {
                 enemies_alerted = true;
                 global.alert_timer = 10 * game_get_speed(gamespeed_fps);
-                show_debug_message("Player punched enemy - all enemies alerted!");
             }
         }
     }
 }
 
-// Fire weapon or punch on space bar press
-if (keyboard_check_pressed(vk_space) && !is_punching) {
+// Fire weapon or punch on space bar press (only if not crouching)
+if (keyboard_check_pressed(vk_space) && !is_punching && !is_crouching) {
     if (instance_exists(global.equipment_slots)) {
         var weapon_slot = global.equipment_slots.inventory[# 1, 0];
         if (is_array(weapon_slot) && weapon_slot[0] != -1 && obj_manager.ammo_current > 0) {
-            // Existing shooting logic
             var weapon_id = weapon_slot[0];
             var ammo_item_id = -1;
             var ammo_key = ds_map_find_first(global.ammo_to_weapon);
@@ -174,7 +312,6 @@ if (keyboard_check_pressed(vk_space) && !is_punching) {
                         smallest_stack[2] -= 1;
                         if (smallest_stack[2] <= 0) {
                             inventory_remove(smallest_i, smallest_j, global.backpack.inventory);
-                            show_debug_message("Removed empty " + global.item_data[ammo_item_id][0] + " stack at [" + string(smallest_i) + "," + string(smallest_j) + "]");
                         } else {
                             global.backpack.inventory[# smallest_i, smallest_j] = smallest_stack;
                         }
@@ -184,40 +321,31 @@ if (keyboard_check_pressed(vk_space) && !is_punching) {
                     bullet.direction = input_direction;
                     bullet.image_angle = input_direction;
                     bullet.creator = id;
-                    show_debug_message("Fired " + global.item_data[weapon_id][0] + ", rounds left: " + string(obj_manager.ammo_current));
-                } else {
-                    show_debug_message("No ammo left for " + global.item_data[weapon_id][0]);
                 }
             }
         } else {
-            // Punch logic
             is_punching = true;
-            has_hit = false; // Reset has_hit for new punch
+            has_hit = false;
             image_index = 0;
-            // Select punch sprite based on input_direction
-            if (input_direction >= 45 && input_direction <= 135) { // Up
+            if (input_direction >= 45 && input_direction <= 135) {
                 sprite_index = spr_rattler_punch_up;
                 image_xscale = 1;
                 image_yscale = 1;
-            } else if (input_direction >= 225 && input_direction <= 315) { // Down
+            } else if (input_direction >= 225 && input_direction <= 315) {
                 sprite_index = spr_rattler_punch_down;
                 image_xscale = 1;
                 image_yscale = 1;
-            } else { // Left or Right
+            } else {
                 sprite_index = spr_rattler_punch;
                 image_xscale = (input_direction > 135 && input_direction < 225) ? -1 : 1;
-                last_xscale = image_xscale; // Store facing direction
+                last_xscale = image_xscale;
                 image_yscale = 1;
             }
-            show_debug_message("Punching with " + sprite_get_name(sprite_index) + ", direction: " + string(input_direction));
         }
-    } else {
-        show_debug_message("global.equipment_slots does not exist");
     }
 }
 
 // Inventory and pickup logic
-if (!variable_instance_exists(id, "pickup_cooldown")) pickup_cooldown = 0;
 if (pickup_cooldown > 0) pickup_cooldown--;
 
 nearest_item_to_pickup = noone;
@@ -233,7 +361,6 @@ with (obj_item) {
 if (keyboard_check_pressed(vk_tab)) {
     if (instance_exists(global.backpack)) {
         global.backpack.is_open = !global.backpack.is_open;
-        show_debug_message((global.backpack.is_open ? "Opened" : "Closed") + " backpack at GUI position [64,256]");
     }
 }
 
@@ -243,7 +370,6 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
         if (my_item_id != ITEM.NONE) {
             var rounds_per_magazine = ds_map_exists(global.ammo_to_weapon, my_item_id) ? global.ammo_to_weapon[? my_item_id][2] : 1;
             var rounds_to_add = stack_quantity * rounds_per_magazine;
-            show_debug_message("Picking up " + global.item_data[my_item_id][0] + ": stack_quantity=" + string(stack_quantity) + ", rounds_to_add=" + string(rounds_to_add));
             var success = inventory_add_item(global.backpack, my_item_id, rounds_to_add, true, contained_items);
             if (success) {
                 is_in_world = false;
@@ -264,17 +390,13 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
                     var mod_grid = ds_grid_create(mod_width, mod_height);
                     if (array_length(contained_items) > 0) {
                         array_to_ds_grid(contained_items, mod_grid);
-                        show_debug_message("Restored mod inventory for " + global.item_data[my_item_id][0] + " with placement_id " + string(placement_id) + " and contained_items: " + string(contained_items));
                     } else {
                         ds_grid_clear(mod_grid, -1);
                     }
                     global.mod_inventories[? placement_id] = mod_grid;
                 }
-                show_debug_message("Picked up " + global.item_data[my_item_id][0] + " with " + string(rounds_to_add) + " rounds");
                 instance_destroy();
                 other.pickup_cooldown = 15;
-            } else {
-                show_debug_message("Failed to pick up " + global.item_data[my_item_id][0] + " - backpack full or placement error");
             }
         }
     }
@@ -283,9 +405,8 @@ if (keyboard_check_pressed(ord("E")) && pickup_cooldown == 0 && nearest_item_to_
 
 if (keyboard_check_pressed(ord("I"))) {
     with (obj_proximity_door) {
-		if (locked)
-		{
-			unlock();
-		}
-	}
+        if (locked) {
+            unlock();
+        }
+    }
 }
